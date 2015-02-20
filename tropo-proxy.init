@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# Tropo auth Service    connect service for Tropo API
+#
+# chkconfig: 2345 80 30
+# description: connect service for Tropo API
+# processname: tropo-auth
+
+
+# Source function library.
+. /etc/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+APP_PATH=/opt/tropo-auth
+EXEC=tropo-auth.linux
+DAEMON=$APP_PATH/bin/$EXEC
+
+OPTIONS="--config=${CONFIG_FILE}"
+LOGFILE=$APP_PATH/logs/service.log
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+RETVAL=0
+
+if [[ -f $APP_PATH ]];then
+    echo "Unable to find working directory [ ${APP_PATH} ] "
+    exit 3
+fi
+
+if [[ ! -f $DAEMON ]];then
+    echo "Unable to find daemon [ ${DAEMON} ] "
+    exit 3
+fi
+
+if [[ -f $APP_PATH/logs ]];then
+    echo "Log directory missing [ ${APP_PATH}/log/ ] "
+    exit 3
+fi
+
+if [[ ! -f $CONFIG_FILE ]];then
+    echo "Config file missing [ ${CONFIG_FILE} ] "
+    exit 3
+fi
+
+prog='Tropo API'
+
+start() {
+        # Check that networking is up.
+        [ "$NETWORKING" = "no" ] && exit 1
+
+        echo -n $"Starting $prog: "
+        daemon --check $EXEC nohup $DAEMON $OPTIONS < /dev/null >> $LOGFILE &
+        RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && touch /var/lock/subsys/$EXEC
+        return $RETVAL
+}
+
+stop() {
+        echo -n $"Shutting down $prog: "
+        killproc $EXEC
+        RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/$EXEC
+        return $RETVAL
+}
+
+# See how we were called.
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        status $EXEC
+        RETVAL=$?
+        ;;
+  restart|reload)
+        stop
+        start
+        RETVAL=$?
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|restart|status}"
+        RETVAL=3
+esac
+
+exit $RETVAL
+
