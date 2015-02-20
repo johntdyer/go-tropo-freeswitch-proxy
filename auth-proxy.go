@@ -13,6 +13,9 @@ import (
 )
 
 var (
+	AppName          = "tropo-auth"
+	buildDate        string
+	applicationData  *AppVersion
 	configPropertyId = os.Getenv("ADDRESS_CONFIG_PROPERTY_ID")
 	PapiUser         = os.Getenv("TROPO_API_USER")
 	PapiPass         = os.Getenv("TROPO_API_PASS")
@@ -25,6 +28,17 @@ var (
 
 func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprint(w, "Welcome!\n")
+}
+
+// versionRequestHandler handles incoming version / health requests
+func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+
+	w.Header().Add("Content-Type", "application/json")
+
+	body, _ := json.Marshal(applicationData)
+
+	fmt.Fprintf(w, string(body))
+
 }
 
 func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
@@ -80,13 +94,21 @@ func getAuth(number string) *Auth {
 }
 
 func init() {
+	applicationData = &AppVersion{
+		Name:      AppName,
+		Version:   Version,
+		BuildDate: buildDate,
+	}
+
 	log.SetFormatter(&log.TextFormatter{})
 	level, err := log.ParseLevel("debug")
 	if err != nil {
 		log.Fatal(err)
 	}
 	applicationLogLevel := level.String()
+	log.Info("Starting " + applicationData.Name + " Version: " + applicationData.Version + " Built on: " + applicationData.BuildDate)
 	log.Warn("Logging at " + applicationLogLevel + " level")
+
 	log.SetLevel(level)
 }
 
@@ -98,9 +120,9 @@ func main() {
 	router.GET("/", Index)
 
 	router.GET("/connect-auth", BasicAuth(AuthHandler, user, pass))
-
+	router.GET("/version", VersionHandler)
 	hs := make(HostSwitch)
-	hs[":9082"] = router
+	hs["localhost:9082"] = router
 
 	http.ListenAndServe(":"+listenPort, hs)
 

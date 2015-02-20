@@ -4,6 +4,13 @@ import (
 	"encoding/xml"
 )
 
+// AppVersion contains information about the version of the application
+type AppVersion struct {
+	Name      string `json:"application"`
+	Version   string `json:"version"`
+	BuildDate string `json:"build_date"`
+}
+
 type Auth struct {
 	Href        string `json:"href"`
 	Id          string `json:"id"`
