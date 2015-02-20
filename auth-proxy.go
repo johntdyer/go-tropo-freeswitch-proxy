@@ -5,9 +5,7 @@ import (
 	_ "bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/joho/godotenv/autoload"
 	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/julienschmidt/httprouter"
 	"encoding/json"
-	// "encoding/xml"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 )
@@ -26,17 +24,10 @@ var (
 	ConnectDomain    = "connect.tropo.com"
 )
 
-func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	fmt.Fprint(w, "Welcome!\n")
-}
-
 // versionRequestHandler handles incoming version / health requests
 func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-
 	w.Header().Add("Content-Type", "application/json")
-
 	body, _ := json.Marshal(applicationData)
-
 	fmt.Fprintf(w, string(body))
 
 }
@@ -52,7 +43,7 @@ func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params)
 		log.Debugf("domain: %s, user: %s, sip_auth_username: %s", auth.Domain, auth.Username, auth.SipAuthUsername)
 		w.Header().Set("Content-Type", "text/xml")
 
-		addressData := getAuth(auth.SipAuthUsername)
+		addressData := GetAddressAuthData(auth.SipAuthUsername)
 		if addressData.Value == "" {
 			log.Debug("Returned user not found response")
 			fmt.Fprintf(w, RenderNotFound())
@@ -64,33 +55,6 @@ func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params)
 		log.Debug("Returned user not found response")
 		fmt.Fprintf(w, RenderEmpty())
 	}
-
-	//
-}
-
-func getAuth(number string) *Auth {
-	client := &http.Client{}
-	resp_json := &Auth{}
-	req, err := http.NewRequest("GET", PapiUrl+"/addresses/number/"+number+"/config/"+configPropertyId, nil)
-	req.SetBasicAuth(PapiUser, PapiPass)
-	api_resp, err := client.Do(req)
-	if err != nil {
-		log.Error("Error : %s", err)
-		return resp_json
-	}
-
-	if api_resp.StatusCode == 200 {
-
-		body, _ := ioutil.ReadAll(api_resp.Body)
-
-		resp_json.Address = number
-
-		json.Unmarshal(body, &resp_json)
-
-	} else {
-		log.Warn("user not found")
-	}
-	return resp_json
 }
 
 func init() {
@@ -117,7 +81,7 @@ func main() {
 	pass := []byte(BasicAuthPass)
 
 	router := httprouter.New()
-	router.GET("/", Index)
+	router.GET("/", VersionHandler)
 
 	router.GET("/connect-auth", BasicAuth(AuthHandler, user, pass))
 	router.GET("/version", VersionHandler)
