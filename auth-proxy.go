@@ -5,7 +5,7 @@ import (
 	_ "bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/joho/godotenv/autoload"
 	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/julienschmidt/httprouter"
 	"encoding/json"
-	"encoding/xml"
+	// "encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -19,6 +19,7 @@ var (
 	PapiUrl          = os.Getenv("TROPO_API_URL")
 	BasicAuthUser    = os.Getenv("API_AUTH_USER")
 	BasicAuthPass    = os.Getenv("API_AUTH_PASS")
+	listenPort       = os.Getenv("LISTEN_PORT")
 	ConnectDomain    = "connect.tropo.com"
 )
 
@@ -27,63 +28,55 @@ func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-
+	auth := &AuthRequest{}
 	q := req.URL.Query()
 
 	if q.Get("action") == "sip_auth" {
-		domain := q.Get("domain")
-		username := q.Get("user")
-		sip_auth_username := q.Get("sip_auth_username")
-		log.Debugf("domain: %s, user: %s, sip_auth_username: %s", domain, username, sip_auth_username)
-		fmt.Fprintf(w, "domain: %s, user: %s, sip_auth_username: %s\n", domain, username, sip_auth_username)
+		auth.Domain = q.Get("domain")
+		auth.Username = q.Get("user")
+		auth.SipAuthUsername = q.Get("sip_auth_username")
+		log.Debugf("domain: %s, user: %s, sip_auth_username: %s", auth.Domain, auth.Username, auth.SipAuthUsername)
+		w.Header().Set("Content-Type", "text/xml")
+
+		addressData := getAuth(auth.SipAuthUsername)
+		if addressData.Value == "" {
+			log.Debug("Returned user not found response")
+			fmt.Fprintf(w, RenderNotFound())
+		} else {
+			fmt.Fprintf(w, RenderUserDirectory(auth.SipAuthUsername, addressData.Value, auth.Domain))
+		}
+
 	} else {
-
-		fmt.Fprintf(w, "wtf")
+		log.Debug("Returned user not found response")
+		fmt.Fprintf(w, RenderEmpty())
 	}
 
-	// addressData := getAuth(ps.ByName("name"))
-	// fmt.Printf("%+v\n", addressData)
-	// number := fmt.Sprintf("+%s", addressData.Address)
-	// fmt.Fprintf(w, renderUser(number, addressData.Value, ConnectDomain))
 	//
-}
-
-func renderUser(address string, secret string, domain string) string {
-	user := &User{}
-	user.Id = address
-
-	user.Params = append(user.Params, Param{
-		Name:  "password",
-		Value: secret,
-	})
-
-	profile := Address{
-		Name: domain,
-		User: user,
-	}
-	x, _ := xml.MarshalIndent(profile, "", "  ")
-	return string(x)
 }
 
 func getAuth(number string) *Auth {
 	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", PapiUrl+"/addresses/number/+"+number+"/config/"+configPropertyId, nil)
+	resp_json := &Auth{}
+	req, err := http.NewRequest("GET", PapiUrl+"/addresses/number/"+number+"/config/"+configPropertyId, nil)
 	req.SetBasicAuth(PapiUser, PapiPass)
 	api_resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("Error : %s", err)
+		log.Error("Error : %s", err)
+		return resp_json
 	}
 
-	body, _ := ioutil.ReadAll(api_resp.Body)
+	if api_resp.StatusCode == 200 {
 
-	resp_json := &Auth{
-		Address: number,
+		body, _ := ioutil.ReadAll(api_resp.Body)
+
+		resp_json.Address = number
+
+		json.Unmarshal(body, &resp_json)
+
+	} else {
+		log.Warn("user not found")
 	}
-
-	json.Unmarshal(body, &resp_json)
 	return resp_json
-
 }
 
 func init() {
@@ -107,8 +100,8 @@ func main() {
 	router.GET("/connect-auth", BasicAuth(AuthHandler, user, pass))
 
 	hs := make(HostSwitch)
-	hs["localhost:9082"] = router
+	hs[":9082"] = router
 
-	http.ListenAndServe("localhost:9082", hs)
+	http.ListenAndServe(":"+listenPort, hs)
 
 }
