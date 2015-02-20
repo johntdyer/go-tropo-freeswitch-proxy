@@ -21,6 +21,7 @@ type Auth struct {
 
 type AuthRequest struct {
 	Domain          string
+	Action          string
 	Username        string
 	SipAuthUsername string
 }
@@ -59,7 +60,7 @@ type Group struct {
 
 type User struct {
 	Id       string  `xml:"id,attr"`
-	Cachable bool    `xml:"cacheable,attr"`
+	Cachable string  `xml:"cacheable,attr"`
 	Params   []Param `xml:"params>param"`
 }
 

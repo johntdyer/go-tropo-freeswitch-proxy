@@ -1,6 +1,7 @@
 package main
 
 import (
+	log "bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/Sirupsen/logrus"
 	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/julienschmidt/httprouter"
 	"bytes"
 	"encoding/base64"
@@ -22,6 +23,7 @@ func (hs HostSwitch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Handle host names for wich no handler is registered
 		http.Error(w, "Forbidden", 403) // Or Redirect?
+
 	}
 }
 
@@ -44,7 +46,8 @@ func BasicAuth(h httprouter.Handle, user, pass []byte) httprouter.Handle {
 			}
 		}
 
-		// Request Basic Authentication otherwise
+		// r.Get("RequestURI")
+		log.Warn("Auth error: " + r.RequestURI + "")
 		w.Header().Set("WWW-Authenticate", "Basic realm=Restricted")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	}

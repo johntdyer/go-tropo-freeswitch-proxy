@@ -21,11 +21,16 @@ var (
 	BasicAuthUser    = os.Getenv("API_AUTH_USER")
 	BasicAuthPass    = os.Getenv("API_AUTH_PASS")
 	listenPort       = os.Getenv("LISTEN_PORT")
+	cacheTime        = os.Getenv("USER_CACHE_VALUE")
 	ConnectDomain    = "connect.tropo.com"
 )
 
 // versionRequestHandler handles incoming version / health requests
 func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	log.WithFields(log.Fields{
+		"method": req.Method,
+		"url":    req.RequestURI,
+	}).Debug("VersionHandler")
 	w.Header().Add("Content-Type", "application/json")
 	body, _ := json.Marshal(applicationData)
 	fmt.Fprintf(w, string(body))
@@ -33,26 +38,59 @@ func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Para
 }
 
 func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	auth := &AuthRequest{}
-	q := req.URL.Query()
+	log.Debugf("AuthHandler: %s - %s", req.Method, req.RequestURI)
 
-	if q.Get("action") == "sip_auth" {
+	log.WithFields(log.Fields{
+		"method": req.Method,
+		"url":    req.RequestURI,
+	}).Debug("AuthHandler")
+
+	auth := &AuthRequest{}
+
+	if req.Method == "POST" {
+		auth.Action = req.FormValue("action")
+		auth.Username = req.FormValue("user")
+		auth.Domain = req.FormValue("domain")
+		auth.SipAuthUsername = req.FormValue("sip_auth_username")
+	} else {
+		q := req.URL.Query()
+		auth.Action = q.Get("action")
 		auth.Domain = q.Get("domain")
 		auth.Username = q.Get("user")
 		auth.SipAuthUsername = q.Get("sip_auth_username")
-		log.Debugf("domain: %s, user: %s, sip_auth_username: %s", auth.Domain, auth.Username, auth.SipAuthUsername)
+
+	}
+
+	if auth.Action == "sip_auth" {
+
 		w.Header().Set("Content-Type", "text/xml")
 
 		addressData := GetAddressAuthData(auth.SipAuthUsername)
 		if addressData.Value == "" {
-			log.Debug("Returned user not found response")
+
+			log.WithFields(log.Fields{
+				"number":            auth.Username,
+				"domain":            auth.Domain,
+				"sip_auth_username": auth.SipAuthUsername,
+			}).Debug("Address not found")
+
 			fmt.Fprintf(w, RenderNotFound())
 		} else {
+			log.WithFields(log.Fields{
+				"domain":            auth.Domain,
+				"action":            auth.Action,
+				"username":          auth.Username,
+				"sip_auth_username": auth.SipAuthUsername,
+			}).Debug("User found")
 			fmt.Fprintf(w, RenderUserDirectory(auth.SipAuthUsername, addressData.Value, auth.Domain))
 		}
 
 	} else {
-		log.Debug("Returned user not found response")
+		log.WithFields(log.Fields{
+			"domain": auth.Domain,
+			"action": auth.Action,
+		}).Debug("Unsupported action")
+
 		fmt.Fprintf(w, RenderEmpty())
 	}
 }
@@ -69,9 +107,20 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	applicationLogLevel := level.String()
-	log.Info("Starting " + applicationData.Name + " Version: " + applicationData.Version + " Built on: " + applicationData.BuildDate)
-	log.Warn("Logging at " + applicationLogLevel + " level")
+
+	log.WithFields(log.Fields{
+		"buildDate":        applicationData.BuildDate,
+		"Version":          applicationData.Version,
+		"logLevel":         applicationLogLevel,
+		"cacheTime":        cacheTime,
+		"listenPort":       listenPort,
+		"PapiUrl":          PapiUrl,
+		"PapiUser":         PapiUser,
+		"PapiPass":         "xxxxxx",
+		"configPropertyId": configPropertyId,
+	}).Info("Starting " + applicationData.Name)
 
 	log.SetLevel(level)
 }
@@ -81,13 +130,12 @@ func main() {
 	pass := []byte(BasicAuthPass)
 
 	router := httprouter.New()
-	router.GET("/", VersionHandler)
 
 	router.GET("/connect-auth", BasicAuth(AuthHandler, user, pass))
+	router.POST("/connect-auth", BasicAuth(AuthHandler, user, pass))
+	router.GET("/", VersionHandler)
 	router.GET("/version", VersionHandler)
-	hs := make(HostSwitch)
-	hs["localhost:9082"] = router
 
-	http.ListenAndServe(":"+listenPort, hs)
+	http.ListenAndServe(":"+listenPort, router)
 
 }

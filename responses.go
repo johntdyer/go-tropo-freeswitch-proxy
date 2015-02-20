@@ -62,6 +62,7 @@ func RenderUserDirectory(address string, secret string, domain string) string {
 
 	user := &User{}
 	user.Id = address
+	user.Cachable = cacheTime
 
 	user.Params = append(user.Params, Param{
 		Name:  "password",
