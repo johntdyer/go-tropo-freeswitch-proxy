@@ -3,17 +3,23 @@
 # Usage
 
 * Configure .env file
+
 `cp .env-example .env`
 
 * Build
+
 `./make.sh`
+
 * Run
+
 `./builds/tropo-auth-0.0.1.osx`
 
 ### Development
 
-    auth-proxy.go http_helpers.go structs.go responses.go version.go papi.go
-
+```shell
+go get github.com/tools/godep
+godep go run auth-proxy.go http_helpers.go structs.go responses.go version.go papi.go
+```
 
 #### Installation / Config
 
@@ -24,6 +30,7 @@ To use this plugin you must made a few config changes to Freeswitch.
 `apt-get install freeswitch-mod-xml-curl`
 
 * Enable `mod_xml_curl` in `/etc/freeswitch/autoload_configs/modules.conf.xml`. This is done by simply uncommenting it
+
 * Suggest you disable mod_voicemail `<!--load module="mod_voicemail"/-->` inside `/etc/freeswitch/autoload_configs/modules.conf.xml`
 
 * Configure Freeswitch to use curl for directory lookups `autoload_configs/modules.conf.xml`
