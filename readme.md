@@ -47,6 +47,54 @@ To use this plugin you must made a few config changes to Freeswitch.
 </configuration>
 ```
 
+##### Upstart
+
+```shell
+sudo apt-get install supervisor
+sudo addgroup --system supervisor
+sudo adduser tropo supervisor
+
+
+cat <<EOF > /etc/supervisor/supervisord.conf
+[unix_http_server]
+file=/var/run/supervisor.sock
+chmod=0770
+chown=root:supervisor
+
+[supervisord]
+logfile=/var/log/supervisor/supervisord.log
+pidfile=/var/run/supervisord.pid
+childlogdir=/var/log/supervisor
+
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+
+[supervisorctl]
+serverurl=unix:///var/run/supervisor.sock
+
+[include]
+files = /etc/supervisor/conf.d/*.conf
+EOF
+
+cat <<EOF > /etc/supervisord/conf.d/tropo-auth-proxy.conf
+[program:tropo-auth-proxy]
+command=/opt/tropo-auth-proxy/bin/tropo-auth.linux
+autostart=true
+autorestart=true
+startretries=10
+user=tropo
+directory=/opt/tropo-auth-proxy
+redirect_stderr=true
+stdout_logfile=/opt/tropo-auth-proxy/logs/tropo-auth-proxy.log
+stdout_logfile_maxbytes=50MB
+stdout_logfile_backups=10
+EOF
+
+sudo service supervisor restart
+supervisorctl status tropo-auth-proxy
+```
+
+
 #### Examples
 
 
