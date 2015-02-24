@@ -7,13 +7,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 )
 
 var (
 	AppName          = "tropo-auth"
 	buildDate        string
-	applicationData  *AppVersion
+	applicationData  *AppData
 	configPropertyId = os.Getenv("ADDRESS_CONFIG_PROPERTY_ID")
 	PapiUser         = os.Getenv("TROPO_API_USER")
 	PapiPass         = os.Getenv("TROPO_API_PASS")
@@ -32,9 +34,35 @@ func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Para
 		"url":    req.RequestURI,
 	}).Debug("VersionHandler")
 	w.Header().Add("Content-Type", "application/json")
+
+	s := getProvisioningStatus(PapiUrl)
+	applicationData.ApiConnectivty = s
 	body, _ := json.Marshal(applicationData)
 	fmt.Fprintf(w, string(body))
 
+}
+
+func getProvisioningStatus(papiUrl string) bool {
+	result := false
+	u, err := url.Parse(papiUrl)
+	if err != nil {
+		log.Error(err)
+	}
+
+	site := &Site{u.Host + ":80"}
+
+	t, _ := site.Status()
+	if t == 2 {
+		result = true
+	}
+
+	log.WithFields(log.Fields{
+		"status_code": t,
+		"err":         err,
+		"status_msg":  strconv.FormatBool(result),
+	}).Debug("getProvisioningStatus()")
+
+	return result
 }
 
 func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
@@ -96,7 +124,7 @@ func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params)
 }
 
 func init() {
-	applicationData = &AppVersion{
+	applicationData = &AppData{
 		Name:      AppName,
 		Version:   Version,
 		BuildDate: buildDate,
@@ -135,6 +163,7 @@ func main() {
 	router.POST("/connect-auth", BasicAuth(AuthHandler, user, pass))
 	router.GET("/", VersionHandler)
 	router.GET("/version", VersionHandler)
+	router.GET("/health", VersionHandler)
 
 	http.ListenAndServe(":"+listenPort, router)
 

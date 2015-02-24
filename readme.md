@@ -18,7 +18,7 @@
 
 ```shell
 go get github.com/tools/godep
-godep go run auth-proxy.go http_helpers.go structs.go responses.go version.go papi.go
+godep go run auth-proxy.go http_helpers.go check_api.go structs.go responses.go version.go papi.go
 ```
 
 #### Installation / Config

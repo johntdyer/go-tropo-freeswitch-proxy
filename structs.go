@@ -4,11 +4,12 @@ import (
 	"encoding/xml"
 )
 
-// AppVersion contains information about the version of the application
-type AppVersion struct {
-	Name      string `json:"application"`
-	Version   string `json:"version"`
-	BuildDate string `json:"build_date"`
+// AppData contains information about the version of the application
+type AppData struct {
+	Name           string `json:"application"`
+	Version        string `json:"version"`
+	BuildDate      string `json:"build_date"`
+	ApiConnectivty bool   `json:"api_connectivity"`
 }
 
 type Auth struct {
