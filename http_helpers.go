@@ -63,15 +63,22 @@ func getProvisioningStatus(papiUrl string) bool {
 	site := &Site{u.Host + ":80"}
 
 	t, _ := site.Status()
+
+	// status 2 is pass
 	if t == 2 {
 		result = true
 	}
 
-	log.WithFields(log.Fields{
+	fields := log.Fields{
 		"status_code": t,
-		"err":         err,
 		"status_msg":  strconv.FormatBool(result),
-	}).Debug("getProvisioningStatus()")
+	}
+
+	if err != nil {
+		fields["error"] = err
+	}
+
+	log.WithFields(fields).Debug("getProvisioningStatus()")
 
 	return result
 }
