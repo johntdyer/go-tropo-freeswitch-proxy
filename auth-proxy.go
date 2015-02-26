@@ -74,24 +74,26 @@ func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Para
 func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	authResponse := &AuthHandlerResponse{}
 
-	auth := parseFreeswitchRequest(req)
+	freeswitch := parseFreeswitchRequest(req)
 
 	authResponse.Fields = log.Fields{
-		"domain":            auth.Domain,
+		"remote_ip":         freeswitch.Ip,
+		"sip_user_agent":    freeswitch.UserAgent,
+		"domain":            freeswitch.Domain,
 		"url":               req.RequestURI,
 		"method":            req.Method,
-		"number":            auth.Username,
-		"action":            auth.Action,
-		"sip_auth_username": auth.SipAuthUsername,
+		"number":            freeswitch.Username,
+		"action":            freeswitch.Action,
+		"sip_auth_username": freeswitch.SipAuthUsername,
 	}
 
 	// Generally we only care about sip_auth action
-	if auth.Action == "sip_auth" {
+	if freeswitch.Action == "sip_auth" {
 
 		// Make sure the address starts w/ a plus
-		if strings.HasPrefix(auth.SipAuthUsername, "+") {
+		if strings.HasPrefix(freeswitch.SipAuthUsername, "+") {
 
-			addressData := GetAddressAuthData(auth.SipAuthUsername)
+			addressData := GetAddressAuthData(freeswitch.SipAuthUsername)
 
 			// If we get no auth data back then the number is not found
 			if addressData.Value == "" {
@@ -99,7 +101,7 @@ func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params)
 				authResponse.XmlResponse = RenderNotFound()
 			} else {
 				authResponse.Message = "User found"
-				authResponse.XmlResponse = RenderUserDirectory(auth.SipAuthUsername, addressData.Value, auth.Domain)
+				authResponse.XmlResponse = RenderUserDirectory(freeswitch.SipAuthUsername, addressData.Value, freeswitch.Domain)
 			}
 
 		} else {

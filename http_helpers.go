@@ -30,16 +30,21 @@ func (hs HostSwitch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Parse request ( GET or POST ) and get freeswitch data
-func parseFreeswitchRequest(req *http.Request) (a *AuthRequest) {
-	a = &AuthRequest{}
+func parseFreeswitchRequest(req *http.Request) (a *FreeswitchRequest) {
+	a = &FreeswitchRequest{}
+
 	if req.Method == "POST" {
 		a.Action = req.FormValue("action")
+		a.Ip = req.FormValue("ip")
+		a.UserAgent = req.FormValue("sip_user_agent")
 		a.Username = req.FormValue("user")
 		a.Domain = req.FormValue("domain")
 		a.SipAuthUsername = req.FormValue("sip_auth_username")
 	} else {
 		q := req.URL.Query()
 		a.Action = q.Get("action")
+		a.Ip = q.Get("ip")
+		a.UserAgent = q.Get("sip_user_agent")
 		a.Domain = q.Get("domain")
 		a.Username = q.Get("user")
 		a.SipAuthUsername = q.Get("sip_auth_username")

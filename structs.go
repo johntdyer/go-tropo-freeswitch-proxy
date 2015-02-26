@@ -27,8 +27,10 @@ type Auth struct {
 	Address     string `json:"address"`
 }
 
-type AuthRequest struct {
+type FreeswitchRequest struct {
 	Domain          string
+	Ip              string
+	UserAgent       string
 	Action          string
 	Username        string
 	SipAuthUsername string
