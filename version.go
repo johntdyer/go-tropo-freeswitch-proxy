@@ -1,4 +1,4 @@
 package main
 
 // Version of the release of software
-const Version string = "0.0.4"
+const Version string = "0.0.5"

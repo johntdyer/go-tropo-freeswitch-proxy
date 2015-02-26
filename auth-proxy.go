@@ -60,8 +60,10 @@ func init() {
 // versionRequestHandler handles incoming version / health requests
 func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	log.WithFields(log.Fields{
-		"method": req.Method,
-		"url":    req.RequestURI,
+		"method":     req.Method,
+		"url":        req.RequestURI,
+		"version":    applicationData.Version,
+		"build_date": applicationData.BuildDate,
 	}).Debug("VersionHandler")
 
 	applicationData.ApiConnectivty = getProvisioningStatus(PapiUrl)
