@@ -18,23 +18,26 @@ func GetAddressAuthData(number string) *Auth {
 		return resp_json
 	}
 
+	fields := log.Fields{
+		"responseCode": api_resp.StatusCode,
+		"number":       number,
+	}
+
 	if api_resp.StatusCode == 200 {
 
 		body, _ := ioutil.ReadAll(api_resp.Body)
 		resp_json.Address = number
-		log.WithFields(log.Fields{
-			"responseCode": api_resp.StatusCode,
-			"number":       number,
-		}).Debug("PAPI Request successful")
+		log.WithFields(fields).Debug("PAPI Request successful")
 
-		json.Unmarshal(body, &resp_json)
+		err := json.Unmarshal(body, &resp_json)
+		if err != nil {
+			log.Error("PAPI Error : %s", err)
+			return resp_json
+		}
 
 	} else {
-		log.WithFields(log.Fields{
-			"responseCode": api_resp.StatusCode,
-			"number":       number,
-			"configId":     configPropertyId,
-		}).Warn("PAPI request returned non-2xx")
+
+		log.WithFields(fields).Warn("PAPI request returned non-2xx")
 
 	}
 	return resp_json
