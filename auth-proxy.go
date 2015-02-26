@@ -7,9 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
-	"strconv"
+	"strings"
 )
 
 var (
@@ -27,102 +26,7 @@ var (
 	ConnectDomain    = "connect.tropo.com"
 )
 
-// versionRequestHandler handles incoming version / health requests
-func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	log.WithFields(log.Fields{
-		"method": req.Method,
-		"url":    req.RequestURI,
-	}).Debug("VersionHandler")
-	w.Header().Add("Content-Type", "application/json")
-
-	s := getProvisioningStatus(PapiUrl)
-	applicationData.ApiConnectivty = s
-	body, _ := json.Marshal(applicationData)
-	fmt.Fprintf(w, string(body))
-
-}
-
-func getProvisioningStatus(papiUrl string) bool {
-	result := false
-	u, err := url.Parse(papiUrl)
-	if err != nil {
-		log.Error(err)
-	}
-
-	site := &Site{u.Host + ":80"}
-
-	t, _ := site.Status()
-	if t == 2 {
-		result = true
-	}
-
-	log.WithFields(log.Fields{
-		"status_code": t,
-		"err":         err,
-		"status_msg":  strconv.FormatBool(result),
-	}).Debug("getProvisioningStatus()")
-
-	return result
-}
-
-func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	log.Debugf("AuthHandler: %s - %s", req.Method, req.RequestURI)
-
-	log.WithFields(log.Fields{
-		"method": req.Method,
-		"url":    req.RequestURI,
-	}).Debug("AuthHandler")
-
-	auth := &AuthRequest{}
-
-	if req.Method == "POST" {
-		auth.Action = req.FormValue("action")
-		auth.Username = req.FormValue("user")
-		auth.Domain = req.FormValue("domain")
-		auth.SipAuthUsername = req.FormValue("sip_auth_username")
-	} else {
-		q := req.URL.Query()
-		auth.Action = q.Get("action")
-		auth.Domain = q.Get("domain")
-		auth.Username = q.Get("user")
-		auth.SipAuthUsername = q.Get("sip_auth_username")
-
-	}
-
-	if auth.Action == "sip_auth" {
-
-		w.Header().Set("Content-Type", "text/xml")
-
-		addressData := GetAddressAuthData(auth.SipAuthUsername)
-		if addressData.Value == "" {
-
-			log.WithFields(log.Fields{
-				"number":            auth.Username,
-				"domain":            auth.Domain,
-				"sip_auth_username": auth.SipAuthUsername,
-			}).Debug("Address not found")
-
-			fmt.Fprintf(w, RenderNotFound())
-		} else {
-			log.WithFields(log.Fields{
-				"domain":            auth.Domain,
-				"action":            auth.Action,
-				"username":          auth.Username,
-				"sip_auth_username": auth.SipAuthUsername,
-			}).Debug("User found")
-			fmt.Fprintf(w, RenderUserDirectory(auth.SipAuthUsername, addressData.Value, auth.Domain))
-		}
-
-	} else {
-		log.WithFields(log.Fields{
-			"domain": auth.Domain,
-			"action": auth.Action,
-		}).Debug("Unsupported action")
-
-		fmt.Fprintf(w, RenderEmpty())
-	}
-}
-
+// init function does amazing things
 func init() {
 	applicationData = &AppData{
 		Name:      AppName,
@@ -151,6 +55,70 @@ func init() {
 	}).Info("Starting " + applicationData.Name)
 
 	log.SetLevel(level)
+}
+
+// versionRequestHandler handles incoming version / health requests
+func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	log.WithFields(log.Fields{
+		"method": req.Method,
+		"url":    req.RequestURI,
+	}).Debug("VersionHandler")
+
+	applicationData.ApiConnectivty = getProvisioningStatus(PapiUrl)
+	body, _ := json.Marshal(applicationData)
+
+	w.Header().Add("Content-Type", "application/json")
+	fmt.Fprintf(w, string(body))
+}
+
+func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	authResponse := &AuthHandlerResponse{}
+
+	auth := parseFreeswitchRequest(req)
+
+	authResponse.Fields = log.Fields{
+		"domain":            auth.Domain,
+		"url":               req.RequestURI,
+		"method":            req.Method,
+		"number":            auth.Username,
+		"action":            auth.Action,
+		"sip_auth_username": auth.SipAuthUsername,
+	}
+
+	// Generally we only care about sip_auth action
+	if auth.Action == "sip_auth" {
+
+		// Make sure the address starts w/ a plus
+		if strings.HasPrefix(auth.SipAuthUsername, "+") {
+
+			addressData := GetAddressAuthData(auth.SipAuthUsername)
+
+			// If we get no auth data back then the number is not found
+			if addressData.Value == "" {
+				authResponse.Message = "Address not found"
+				authResponse.XmlResponse = RenderNotFound()
+			} else {
+				authResponse.Message = "User found"
+				authResponse.XmlResponse = RenderUserDirectory(auth.SipAuthUsername, addressData.Value, auth.Domain)
+			}
+
+		} else {
+
+			authResponse.Message = "Not e164 encoded"
+			authResponse.XmlResponse = RenderNotFound()
+		}
+
+	} else {
+
+		authResponse.Message = "Unsupported action"
+		authResponse.XmlResponse = RenderEmpty()
+
+	}
+
+	log.WithFields(authResponse.Fields).Info(authResponse.Message)
+	w.Header().Set("X-Tropo-Reason", authResponse.Message)
+	w.Header().Set("Content-Type", "text/xml")
+	fmt.Fprintf(w, authResponse.XmlResponse)
 }
 
 func main() {

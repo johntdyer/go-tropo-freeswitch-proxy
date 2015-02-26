@@ -1,8 +1,15 @@
 package main
 
 import (
+	log "bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/Sirupsen/logrus"
 	"encoding/xml"
 )
+
+type AuthHandlerResponse struct {
+	Message     string
+	XmlResponse string
+	Fields      log.Fields
+}
 
 // AppData contains information about the version of the application
 type AppData struct {

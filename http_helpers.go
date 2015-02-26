@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -27,6 +29,48 @@ func (hs HostSwitch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Parse request ( GET or POST ) and get freeswitch data
+func parseFreeswitchRequest(req *http.Request) (a *AuthRequest) {
+	a = &AuthRequest{}
+	if req.Method == "POST" {
+		a.Action = req.FormValue("action")
+		a.Username = req.FormValue("user")
+		a.Domain = req.FormValue("domain")
+		a.SipAuthUsername = req.FormValue("sip_auth_username")
+	} else {
+		q := req.URL.Query()
+		a.Action = q.Get("action")
+		a.Domain = q.Get("domain")
+		a.Username = q.Get("user")
+		a.SipAuthUsername = q.Get("sip_auth_username")
+	}
+	return a
+}
+
+// getProvisioningStatus checks connectivity with PAPI
+func getProvisioningStatus(papiUrl string) bool {
+	result := false
+	u, err := url.Parse(papiUrl)
+	if err != nil {
+		log.Error(err)
+	}
+
+	site := &Site{u.Host + ":80"}
+
+	t, _ := site.Status()
+	if t == 2 {
+		result = true
+	}
+
+	log.WithFields(log.Fields{
+		"status_code": t,
+		"err":         err,
+		"status_msg":  strconv.FormatBool(result),
+	}).Debug("getProvisioningStatus()")
+
+	return result
+}
+
 func BasicAuth(h httprouter.Handle, user, pass []byte) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		const basicAuthPrefix string = "Basic "
@@ -46,7 +90,6 @@ func BasicAuth(h httprouter.Handle, user, pass []byte) httprouter.Handle {
 			}
 		}
 
-		// r.Get("RequestURI")
 		log.Warn("Auth error: " + r.RequestURI + "")
 		w.Header().Set("WWW-Authenticate", "Basic realm=Restricted")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
