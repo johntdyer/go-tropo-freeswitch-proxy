@@ -1,3 +1,6 @@
+# 0.0.6
+
+* Create users auth resource OPS-3505
 
 # 0.0.5
 

@@ -125,6 +125,36 @@ func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params)
 	fmt.Fprintf(w, authResponse.XmlResponse)
 }
 
+func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+
+	address := ps.ByName("address")
+
+	log.WithFields(log.Fields{
+		"url":     req.RequestURI,
+		"method":  req.Method,
+		"address": address,
+	}).Debug(address)
+
+	if strings.HasPrefix(address, "+") {
+
+		addressData := GetAddressAuthData(address)
+
+		if addressData.Value == "" {
+			w.Header().Set("X-Tropo-Lookup-Result", "Address not found")
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			w.Header().Set("X-Tropo-Lookup-Result", "Address found")
+			w.WriteHeader(http.StatusNonAuthoritativeInfo)
+		}
+
+	} else {
+		w.Header().Set("X-Tropo-Lookup-Result", "Missing plus")
+		w.WriteHeader(http.StatusBadRequest)
+
+	}
+
+}
+
 func main() {
 	user := []byte(BasicAuthUser)
 	pass := []byte(BasicAuthPass)
@@ -136,6 +166,8 @@ func main() {
 	router.GET("/", VersionHandler)
 	router.GET("/version", VersionHandler)
 	router.GET("/health", VersionHandler)
+
+	router.GET("/users/:address", UserAuthHandler)
 
 	http.ListenAndServe(":"+listenPort, router)
 
