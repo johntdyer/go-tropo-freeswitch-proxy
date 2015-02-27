@@ -1,3 +1,7 @@
+# 0.1.0
+
+* Support caching
+
 # 0.0.6
 
 * Create users auth resource OPS-3505

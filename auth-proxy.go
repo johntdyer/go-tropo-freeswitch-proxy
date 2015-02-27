@@ -22,11 +22,9 @@ var (
 // init function does amazing things
 func init() {
 	cacheTimeout, _ := strconv.Atoi(os.Getenv("PAPI_CACHE"))
+
 	GoAuthProxy = &GoAuthProxyConfig{
-		AppName:         "tropo-auth",
 		LogLevel:        os.Getenv("LOG_LEVEL"),
-		AppCacheTimeout: cacheTimeout,
-		AuthProxyCache:  cache.New(2*time.Minute, 30*time.Second),
 		ListenPort:      os.Getenv("LISTEN_PORT"),
 		PropertyId:      os.Getenv("ADDRESS_CONFIG_PROPERTY_ID"),
 		CacheTime:       os.Getenv("USER_CACHE_VALUE"),
@@ -35,8 +33,11 @@ func init() {
 		PapiUrl:         os.Getenv("TROPO_API_URL"),
 		BasicAuthUser:   os.Getenv("API_AUTH_USER"),
 		BasicAuthPass:   os.Getenv("API_AUTH_PASS"),
+		AuthProxyCache:  cache.New(2*time.Minute, 30*time.Second),
+		AppCacheTimeout: cacheTimeout,
 		Version:         Version,
 		BuildDate:       buildDate,
+		AppName:         "tropo-auth",
 	}
 
 	log.SetFormatter(&log.TextFormatter{})
