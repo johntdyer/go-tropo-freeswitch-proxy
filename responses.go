@@ -38,6 +38,29 @@ func RenderNotFound() string {
 	return xml.Header + string(x)
 }
 
+/*
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="freeswitch/xml">
+  <section name="directory">
+    <domain name="connect.tropo.com">
+      <params>
+        <param name="dial-string" value="{presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(${dialed_user}@${dialed_domain})}"></param>
+      </params>
+      <groups>
+        <group name="default">
+          <users>
+            <user id="+14158510070" cacheable="300000">
+              <params>
+                <param name="password" value="KwDuV8LwOfoQx0EpctLFgz4O2kER"></param>
+              </params>
+            </user>
+          </users>
+        </group>
+      </groups>
+    </domain>
+  </section>
+</document>
+*/
 
 func RenderUserDirectory(address string, secret string, domain string) string {
 
