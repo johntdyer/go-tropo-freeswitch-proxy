@@ -38,25 +38,6 @@ func RenderNotFound() string {
 	return xml.Header + string(x)
 }
 
-func RenderUserDirectorySimple(address string, secret string, domain string) string {
-
-	user := &User{}
-	user.Id = address
-
-	user.Params = append(user.Params, Param{
-		Name:  "password",
-		Value: secret,
-	})
-
-	profile := Address{
-		Name: domain,
-		User: user,
-	}
-
-	x, _ := xml.MarshalIndent(profile, "", "  ")
-	return xml.Header + string(x)
-
-}
 
 func RenderUserDirectory(address string, secret string, domain string) string {
 
