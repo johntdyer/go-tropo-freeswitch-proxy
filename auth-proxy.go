@@ -4,11 +4,14 @@ import (
 	log "bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/Sirupsen/logrus"
 	_ "bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/joho/godotenv/autoload"
 	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/julienschmidt/httprouter"
+	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/pmylund/go-cache"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -134,10 +137,31 @@ func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Par
 		"method":  req.Method,
 		"address": address,
 	}).Debug(address)
+	// Address found in cache
+	if found {
+		if result == true {
+			res.Message = "Cached address found"
+			res.Header = http.StatusNonAuthoritativeInfo
+		} else {
+			res.Message = "Cached address not found"
+			res.Header = http.StatusNotFound
+		}
+
+	} else {
 
 	if strings.HasPrefix(address, "+") {
 
 		addressData := GetAddressAuthData(address)
+			if addressData.Value == "" {
+				GoAuthProxy.AuthProxyCache.Set(res.Address, false, 1*time.Minute)
+
+				res.Message = "Address not found"
+				res.Header = http.StatusNotFound
+			} else {
+				GoAuthProxy.AuthProxyCache.Set(res.Address, true, cache.DefaultExpiration)
+				res.Message = "Address found"
+				res.Header = http.StatusNonAuthoritativeInfo
+			}
 
 		if addressData.Value == "" {
 			w.Header().Set("X-Tropo-Lookup-Result", "Address not found")
@@ -146,13 +170,24 @@ func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Par
 			w.Header().Set("X-Tropo-Lookup-Result", "Address found")
 			w.WriteHeader(http.StatusNonAuthoritativeInfo)
 		}
+func CacheHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+
+	log.WithFields(log.Fields{
+		"url":    req.RequestURI,
+		"method": req.Method,
+	}).Debug("CacheHandler()")
+
+	msg := ""
+
+	if req.Method == "DELETE" {
+		GoAuthProxy.AuthProxyCache.Flush()
+		msg = "Flushed"
 
 	} else {
-		w.Header().Set("X-Tropo-Lookup-Result", "Missing plus")
-		w.WriteHeader(http.StatusBadRequest)
+		msg = fmt.Sprintf("Cache count: %s", strconv.Itoa(GoAuthProxy.AuthProxyCache.ItemCount()))
 
 	}
-
+	fmt.Fprintf(w, msg)
 }
 
 func main() {
@@ -166,7 +201,8 @@ func main() {
 	router.GET("/", VersionHandler)
 	router.GET("/version", VersionHandler)
 	router.GET("/health", VersionHandler)
-
+	router.DELETE("/cache", CacheHandler)
+	router.GET("/cache", CacheHandler)
 	router.GET("/users/:address", UserAuthHandler)
 
 	http.ListenAndServe(":"+listenPort, router)

@@ -8,6 +8,7 @@ import (
 )
 
 func GetAddressAuthData(number string) *Auth {
+
 	client := &http.Client{}
 	resp_json := &Auth{}
 	req, err := http.NewRequest("GET", PapiUrl+"/addresses/number/"+number+"/config/"+configPropertyId, nil)
