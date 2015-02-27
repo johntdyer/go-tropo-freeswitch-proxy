@@ -16,8 +16,21 @@
 			"Rev": "ead2e75027bf1a3f6457e28d9eb3c2fa05109d2b"
 		},
 		{
+			"ImportPath": "github.com/jtolds/gls",
+			"Rev": "f1ac7f4f24f50328e6bc838ca4437d1612a0243c"
+		},
+		{
 			"ImportPath": "github.com/julienschmidt/httprouter",
 			"Rev": "00ce1c6a267162792c367acc43b1681a884e1872"
+		},
+		{
+			"ImportPath": "github.com/pmylund/go-cache",
+			"Rev": "03284ca422855c22f78fabc19050734205aeea58"
+		},
+		{
+			"ImportPath": "github.com/smartystreets/goconvey/convey",
+			"Comment": "1.5.0-356-gfbc0a1c",
+			"Rev": "fbc0a1c888f9f96263f9a559d1769905245f1123"
 		}
 	]
 }
