@@ -7,12 +7,15 @@ import (
 	"net/http"
 )
 
+// type Papi struct {
+// }
+
 func GetAddressAuthData(number string) *Auth {
 
 	client := &http.Client{}
 	resp_json := &Auth{}
-	req, err := http.NewRequest("GET", PapiUrl+"/addresses/number/"+number+"/config/"+configPropertyId, nil)
-	req.SetBasicAuth(PapiUser, PapiPass)
+	req, err := http.NewRequest("GET", GoAuthProxy.PapiUrl+"/addresses/number/"+number+"/config/"+GoAuthProxy.PropertyId, nil)
+	req.SetBasicAuth(GoAuthProxy.PapiUser, GoAuthProxy.PapiPass)
 	api_resp, err := client.Do(req)
 	if err != nil {
 		log.Error("PAPI Error : %s", err)

@@ -15,69 +15,75 @@ import (
 )
 
 var (
-	AppName          = "tropo-auth"
-	buildDate        string
-	applicationData  *AppData
-	configPropertyId = os.Getenv("ADDRESS_CONFIG_PROPERTY_ID")
-	PapiUser         = os.Getenv("TROPO_API_USER")
-	PapiPass         = os.Getenv("TROPO_API_PASS")
-	PapiUrl          = os.Getenv("TROPO_API_URL")
-	BasicAuthUser    = os.Getenv("API_AUTH_USER")
-	BasicAuthPass    = os.Getenv("API_AUTH_PASS")
-	listenPort       = os.Getenv("LISTEN_PORT")
-	cacheTime        = os.Getenv("USER_CACHE_VALUE")
-	ConnectDomain    = "connect.tropo.com"
+	buildDate   string
+	GoAuthProxy *GoAuthProxyConfig
 )
 
 // init function does amazing things
 func init() {
-	applicationData = &AppData{
-		Name:      AppName,
-		Version:   Version,
-		BuildDate: buildDate,
+	cacheTimeout, _ := strconv.Atoi(os.Getenv("PAPI_CACHE"))
+	GoAuthProxy = &GoAuthProxyConfig{
+		AppName:         "tropo-auth",
+		LogLevel:        os.Getenv("LOG_LEVEL"),
+		AppCacheTimeout: cacheTimeout,
+		AuthProxyCache:  cache.New(2*time.Minute, 30*time.Second),
+		ListenPort:      os.Getenv("LISTEN_PORT"),
+		PropertyId:      os.Getenv("ADDRESS_CONFIG_PROPERTY_ID"),
+		CacheTime:       os.Getenv("USER_CACHE_VALUE"),
+		PapiUser:        os.Getenv("TROPO_API_USER"),
+		PapiPass:        os.Getenv("TROPO_API_PASS"),
+		PapiUrl:         os.Getenv("TROPO_API_URL"),
+		BasicAuthUser:   os.Getenv("API_AUTH_USER"),
+		BasicAuthPass:   os.Getenv("API_AUTH_PASS"),
+		Version:         Version,
+		BuildDate:       buildDate,
 	}
 
 	log.SetFormatter(&log.TextFormatter{})
-	level, err := log.ParseLevel("debug")
+	level, err := log.ParseLevel(GoAuthProxy.LogLevel)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	applicationLogLevel := level.String()
-
 	log.WithFields(log.Fields{
-		"buildDate":        applicationData.BuildDate,
-		"Version":          applicationData.Version,
-		"logLevel":         applicationLogLevel,
-		"cacheTime":        cacheTime,
-		"listenPort":       listenPort,
-		"PapiUrl":          PapiUrl,
-		"PapiUser":         PapiUser,
+		"buildDate":        GoAuthProxy.BuildDate,
+		"Version":          GoAuthProxy.Version,
+		"logLevel":         GoAuthProxy.LogLevel,
+		"cacheTime":        GoAuthProxy.CacheTime,
+		"listenPort":       GoAuthProxy.ListenPort,
+		"PapiUrl":          GoAuthProxy.PapiUrl,
+		"configPropertyId": GoAuthProxy.PropertyId,
+		"PapiUser":         GoAuthProxy.PapiUser,
 		"PapiPass":         "xxxxxx",
-		"configPropertyId": configPropertyId,
-	}).Info("Starting " + applicationData.Name)
+	}).Info("Starting " + GoAuthProxy.AppName)
 
 	log.SetLevel(level)
 }
 
 // versionRequestHandler handles incoming version / health requests
 func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	ad := AppData{
+		Name:      GoAuthProxy.AppName,
+		BuildDate: GoAuthProxy.BuildDate,
+		Version:   GoAuthProxy.Version,
+	}
+
 	log.WithFields(log.Fields{
 		"method":     req.Method,
 		"url":        req.RequestURI,
-		"version":    applicationData.Version,
-		"build_date": applicationData.BuildDate,
+		"version":    ad.Version,
+		"build_date": ad.BuildDate,
 	}).Debug("VersionHandler")
 
-	applicationData.ApiConnectivty = getProvisioningStatus(PapiUrl)
-	body, _ := json.Marshal(applicationData)
+	ad.ApiConnectivty = getProvisioningStatus(GoAuthProxy.PapiUrl)
+	body, _ := json.Marshal(ad)
 
 	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprintf(w, string(body))
 }
 
-func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	authResponse := &AuthHandlerResponse{}
+func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	authResponse := &DirectoryAuthResponse{}
 
 	freeswitch := parseFreeswitchRequest(req)
 
@@ -129,14 +135,15 @@ func AuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params)
 }
 
 func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-
-	address := ps.ByName("address")
-
-	log.WithFields(log.Fields{
+	res := &UserAuthHandlerResponse{}
+	res.Fields = log.Fields{
 		"url":     req.RequestURI,
 		"method":  req.Method,
-		"address": address,
-	}).Debug(address)
+		"address": res.Address,
+	}
+	res.Address = ps.ByName("address")
+	result, found := GoAuthProxy.AuthProxyCache.Get(res.Address)
+
 	// Address found in cache
 	if found {
 		if result == true {
@@ -149,9 +156,10 @@ func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Par
 
 	} else {
 
-	if strings.HasPrefix(address, "+") {
+		if strings.HasPrefix(res.Address, "+") {
 
-		addressData := GetAddressAuthData(address)
+			addressData := GetAddressAuthData(res.Address)
+
 			if addressData.Value == "" {
 				GoAuthProxy.AuthProxyCache.Set(res.Address, false, 1*time.Minute)
 
@@ -163,13 +171,18 @@ func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Par
 				res.Header = http.StatusNonAuthoritativeInfo
 			}
 
-		if addressData.Value == "" {
-			w.Header().Set("X-Tropo-Lookup-Result", "Address not found")
-			w.WriteHeader(http.StatusNotFound)
 		} else {
-			w.Header().Set("X-Tropo-Lookup-Result", "Address found")
-			w.WriteHeader(http.StatusNonAuthoritativeInfo)
+			res.Message = "Missing plus"
+			res.Header = http.StatusBadRequest
 		}
+	}
+
+	log.WithFields(res.Fields).Debug("UserAuthHandler()")
+
+	w.Header().Set("X-Tropo-Lookup-Result", res.Message)
+	w.WriteHeader(res.Header)
+
+}
 func CacheHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 
 	log.WithFields(log.Fields{
@@ -191,13 +204,13 @@ func CacheHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params
 }
 
 func main() {
-	user := []byte(BasicAuthUser)
-	pass := []byte(BasicAuthPass)
+	user := []byte(GoAuthProxy.BasicAuthUser)
+	pass := []byte(GoAuthProxy.BasicAuthPass)
 
 	router := httprouter.New()
 
-	router.GET("/connect-auth", BasicAuth(AuthHandler, user, pass))
-	router.POST("/connect-auth", BasicAuth(AuthHandler, user, pass))
+	router.GET("/connect-auth", BasicAuth(DirectoryAuthHandler, user, pass))
+	router.POST("/connect-auth", BasicAuth(DirectoryAuthHandler, user, pass))
 	router.GET("/", VersionHandler)
 	router.GET("/version", VersionHandler)
 	router.GET("/health", VersionHandler)
@@ -205,6 +218,6 @@ func main() {
 	router.GET("/cache", CacheHandler)
 	router.GET("/users/:address", UserAuthHandler)
 
-	http.ListenAndServe(":"+listenPort, router)
+	http.ListenAndServe(":"+GoAuthProxy.ListenPort, router)
 
 }

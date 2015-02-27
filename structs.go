@@ -5,10 +5,38 @@ import (
 	"encoding/xml"
 )
 
-type AuthHandlerResponse struct {
+// GoAuthProxyConfig is the primary application struct
+type GoAuthProxyConfig struct {
+	AppName         string
+	PropertyId      string
+	LogLevel        string
+	Version         string
+	BuildDate       string
+	AuthProxyCache  *cache.Cache
+	PapiUser        string
+	PapiPass        string
+	PapiUrl         string
+	BasicAuthUser   string
+	BasicAuthPass   string
+	ListenPort      string
+	CacheTime       string
+	AppCacheTimeout int
+	ConnectDomain   string
+}
+
+// DirectoryAuthResponse stucted used the the Directory handler
+type DirectoryAuthResponse struct {
 	Message     string
 	XmlResponse string
 	Fields      log.Fields
+}
+
+// Struct for handling respoes from UserAuthHandler
+type UserAuthHandlerResponse struct {
+	Message string
+	Header  int
+	Address string
+	Fields  log.Fields
 }
 
 // AppData contains information about the version of the application
