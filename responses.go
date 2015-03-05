@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/xml"
+	"strconv"
 )
 
 // Render empty XML
@@ -69,7 +70,11 @@ func RenderUserDirectory(address string, secret string, domain string, tollPlan 
 
 	user := &User{}
 	user.Id = address
-	user.Cachable = GoAuthProxy.CacheTime
+
+	//convert config value to milliseconds
+	ms, _ := strconv.Atoi(GoAuthProxy.FreeSwitchUserCacheTimeout)
+
+	user.Cachable = strconv.Itoa(ms * 1000) //GoAuthProxy.FreeSwitchUserCacheTimeout
 
 	user.Params = append(user.Params, Param{
 		Name:  "password",

@@ -1,3 +1,9 @@
+# 0.2.1
+
+* Rename cache config options
+* Properly use cache config
+* Ensure all configs are in seconds
+
 # 0.2.0
 
 * Refactor PAPI request methods

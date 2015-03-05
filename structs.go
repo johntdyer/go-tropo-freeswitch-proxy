@@ -8,22 +8,25 @@ import (
 
 // GoAuthProxyConfig is the primary application struct
 type GoAuthProxyConfig struct {
-	AppName         string
-	PropertyId      string
-	LogLevel        string
-	Version         string
-	BuildDate       string
-	PapiUser        string
-	PapiPass        string
-	PapiUrl         string
-	BasicAuthUser   string
-	BasicAuthPass   string
-	ListenPort      string
-	CacheTime       string
-	ConnectDomain   string
-	DefaultTollPlan string
-	AuthProxyCache  *cache.Cache
-	AppCacheTimeout int
+	AppName                    string
+	PropertyId                 string
+	LogLevel                   string
+	Version                    string
+	BuildDate                  string
+	PapiUser                   string
+	PapiPass                   string
+	PapiUrl                    string
+	BasicAuthUser              string
+	BasicAuthPass              string
+	FreeSwitchUserCacheTimeout string
+	CacheNegativeTTL           int
+	CacheTTL                   int
+	ExpiredCachePurgeInterval  int
+	ListenPort                 string
+	ConnectDomain              string
+	DefaultTollPlan            string
+	AuthProxyCache             *cache.Cache
+	AppCacheTimeout            int
 }
 
 // Config data to be used by Proxy to look up address data by ID or key

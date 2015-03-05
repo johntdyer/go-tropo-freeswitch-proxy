@@ -7,6 +7,7 @@ import (
 	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/pmylund/go-cache"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -21,25 +22,39 @@ var (
 
 // init function does amazing things
 func init() {
-	cacheTimeout, _ := strconv.Atoi(os.Getenv("PAPI_CACHE"))
+	// cacheTimeout, _ := strconv.Atoi(os.Getenv("PAPI_CACHE"))
 
+	expiredCachePurgeInterval, _ := strconv.Atoi(os.Getenv("EXPIRED_CACHE_PURGE_INTERVAL"))
+	userCacheTTL, _ := strconv.Atoi(os.Getenv("APP_CACHE_TTL"))
+	appCacheNegativeTTL, _ := strconv.Atoi(os.Getenv("APP_CACHE_NEGATIVE_TTL"))
+	// Cache durations
+	CacheTTLDuration := time.Duration(rand.Int31n(int32(userCacheTTL)))
+	CachePurgeDuration := time.Duration(rand.Int31n(int32(expiredCachePurgeInterval)))
+
+	// convert seconds to millseconds for freeswitch
+	// t := time.Duration(rand.Int31n(int32(cacheTimeout)))
 	GoAuthProxy = &GoAuthProxyConfig{
-		LogLevel:        os.Getenv("LOG_LEVEL"),
-		ListenPort:      os.Getenv("LISTEN_PORT"),
-		PropertyId:      os.Getenv("ADDRESS_CONFIG_PROPERTY_ID"),
-		CacheTime:       os.Getenv("USER_CACHE_VALUE"),
-		PapiUser:        os.Getenv("TROPO_API_USER"),
-		PapiPass:        os.Getenv("TROPO_API_PASS"),
-		PapiUrl:         os.Getenv("TROPO_API_URL"),
-		BasicAuthUser:   os.Getenv("API_AUTH_USER"),
-		BasicAuthPass:   os.Getenv("API_AUTH_PASS"),
-		DefaultTollPlan: os.Getenv("DEFAULT_TOLL_PLAN"),
-		AuthProxyCache:  cache.New(2*time.Minute, 30*time.Second),
-		AppCacheTimeout: cacheTimeout,
-		Version:         Version,
-		BuildDate:       buildDate,
-		AppName:         "tropo-auth",
+		LogLevel:                   os.Getenv("LOG_LEVEL"),
+		ListenPort:                 os.Getenv("LISTEN_PORT"),
+		PropertyId:                 os.Getenv("ADDRESS_CONFIG_PROPERTY_ID"),
+		PapiUser:                   os.Getenv("TROPO_API_USER"),
+		PapiPass:                   os.Getenv("TROPO_API_PASS"),
+		PapiUrl:                    os.Getenv("TROPO_API_URL"),
+		BasicAuthUser:              os.Getenv("API_AUTH_USER"),
+		BasicAuthPass:              os.Getenv("API_AUTH_PASS"),
+		FreeSwitchUserCacheTimeout: os.Getenv("FREESWITCH_CACHE_TIMEOUT"),
+		DefaultTollPlan:            os.Getenv("DEFAULT_TOLL_PLAN"),
+		CacheTTL:                   userCacheTTL,
+		CacheNegativeTTL:           appCacheNegativeTTL,
+		ExpiredCachePurgeInterval:  expiredCachePurgeInterval,
+
+		Version:   Version,
+		BuildDate: buildDate,
+		AppName:   "tropo-auth",
 	}
+
+	// Create a cache with a default expiration time of T minutes, and which  purges expired items every N seconds
+	GoAuthProxy.AuthProxyCache = cache.New(CacheTTLDuration*time.Second, CachePurgeDuration*time.Second)
 
 	log.SetFormatter(&log.TextFormatter{})
 	level, err := log.ParseLevel(GoAuthProxy.LogLevel)
@@ -48,16 +63,20 @@ func init() {
 	}
 
 	log.WithFields(log.Fields{
-		"buildDate":        GoAuthProxy.BuildDate,
-		"Version":          GoAuthProxy.Version,
-		"logLevel":         GoAuthProxy.LogLevel,
-		"cacheTime":        GoAuthProxy.CacheTime,
-		"listenPort":       GoAuthProxy.ListenPort,
-		"PapiUrl":          GoAuthProxy.PapiUrl,
-		"configPropertyId": GoAuthProxy.PropertyId,
-		"defaultTollPlan":  GoAuthProxy.DefaultTollPlan,
-		"PapiUser":         GoAuthProxy.PapiUser,
-		"PapiPass":         "xxxxxx",
+		"buildDate":                  GoAuthProxy.BuildDate,
+		"Version":                    GoAuthProxy.Version,
+		"logLevel":                   GoAuthProxy.LogLevel,
+		"ProxyCacheTTL":              GoAuthProxy.CacheTTL,
+		"ProxyCacheNegativeTTL":      GoAuthProxy.CacheNegativeTTL,
+		"ExpiredCachePurgeInterval":  GoAuthProxy.ExpiredCachePurgeInterval,
+		"freeSwitchUserCacheTimeout": GoAuthProxy.FreeSwitchUserCacheTimeout,
+		"listenPort":                 GoAuthProxy.ListenPort,
+		"PapiUrl":                    GoAuthProxy.PapiUrl,
+		"configPropertyId":           GoAuthProxy.PropertyId,
+		"defaultTollPlan":            GoAuthProxy.DefaultTollPlan,
+
+		"PapiUser": GoAuthProxy.PapiUser,
+		"PapiPass": "xxxxxx",
 	}).Info("Starting " + GoAuthProxy.AppName)
 
 	log.SetLevel(level)
@@ -148,20 +167,24 @@ func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httproute
 
 func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	res := &UserAuthHandlerResponse{}
+	res.Address = ps.ByName("address")
+
 	res.Fields = log.Fields{
 		"url":     req.RequestURI,
 		"method":  req.Method,
 		"address": res.Address,
+		"cache":   nil,
 	}
-	res.Address = ps.ByName("address")
 	result, found := GoAuthProxy.AuthProxyCache.Get(res.Address)
 
 	// Address found in cache
 	if found {
 		if result == true {
+			res.Fields["cache"] = "hit"
 			res.Message = "Cached address found"
 			res.Header = http.StatusNonAuthoritativeInfo
 		} else {
+			res.Fields["cache"] = "miss"
 			res.Message = "Cached address not found"
 			res.Header = http.StatusNotFound
 		}
@@ -174,12 +197,13 @@ func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Par
 			// If we get no auth data back then the number is not found
 			if configData.Name["com.tropo.connect.address.secret"] == "" {
 
-				GoAuthProxy.AuthProxyCache.Set(res.Address, false, 1*time.Minute)
-
+				GoAuthProxy.AuthProxyCache.Set(res.Address, false, time.Duration(rand.Int31n(int32(GoAuthProxy.CacheNegativeTTL)))*time.Second)
+				res.Fields["cache"] = "set-negative"
 				res.Message = "Address not found"
 				res.Header = http.StatusNotFound
 			} else {
 				GoAuthProxy.AuthProxyCache.Set(res.Address, true, cache.DefaultExpiration)
+				res.Fields["cache"] = "set-positive"
 				res.Message = "Address found"
 				res.Header = http.StatusNonAuthoritativeInfo
 			}
