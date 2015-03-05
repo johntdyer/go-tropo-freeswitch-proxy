@@ -23,6 +23,22 @@ type GoAuthProxyConfig struct {
 	CacheTime       string
 	AppCacheTimeout int
 	ConnectDomain   string
+// Config data to be used by Proxy to look up address data by ID or key
+type ConfigData struct {
+	Id   map[int]string
+	Name map[string]string
+}
+
+// Provisioning API response
+type PapiResponse struct {
+	Address string `json:"address"`
+	Configs []struct {
+		Href        string `json:"href"`
+		Id          string `json:"id"`
+		Description string `json:"description"`
+		Value       string `json:"value"`
+		Name        string `json:"name"`
+	}
 }
 
 // DirectoryAuthResponse stucted used the the Directory handler

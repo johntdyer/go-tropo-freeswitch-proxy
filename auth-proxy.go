@@ -105,10 +105,9 @@ func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httproute
 		// Make sure the address starts w/ a plus
 		if strings.HasPrefix(freeswitch.SipAuthUsername, "+") {
 
-			addressData := GetAddressAuthData(freeswitch.SipAuthUsername)
-
+			configData := GetAddressConfigData(freeswitch.SipAuthUsername)
 			// If we get no auth data back then the number is not found
-			if addressData.Value == "" {
+			if configData.Name["com.tropo.connect.address.secret"] == "" {
 				authResponse.Message = "Address not found"
 				authResponse.XmlResponse = RenderNotFound()
 			} else {
@@ -159,9 +158,10 @@ func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Par
 
 		if strings.HasPrefix(res.Address, "+") {
 
-			addressData := GetAddressAuthData(res.Address)
+			configData := GetAddressConfigData(res.Address)
+			// If we get no auth data back then the number is not found
+			if configData.Name["com.tropo.connect.address.secret"] == "" {
 
-			if addressData.Value == "" {
 				GoAuthProxy.AuthProxyCache.Set(res.Address, false, 1*time.Minute)
 
 				res.Message = "Address not found"
