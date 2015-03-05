@@ -1,3 +1,8 @@
+# 0.2.0
+
+* Refactor PAPI request methods
+* Support returning TollPlan for Directory responses
+
 # 0.1.0
 
 * Support caching
