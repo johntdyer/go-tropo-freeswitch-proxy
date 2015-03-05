@@ -46,6 +46,9 @@ func RenderNotFound() string {
       <params>
         <param name="dial-string" value="{presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(${dialed_user}@${dialed_domain})}"></param>
       </params>
+      <variables>
+        <variable name="toll_allow" value="domestic,local"/>
+      </variables>
       <groups>
         <group name="default">
           <users>
@@ -62,7 +65,7 @@ func RenderNotFound() string {
 </document>
 */
 
-func RenderUserDirectory(address string, secret string, domain string) string {
+func RenderUserDirectory(address string, secret string, domain string, tollPlan string) string {
 
 	user := &User{}
 	user.Id = address
@@ -85,6 +88,16 @@ func RenderUserDirectory(address string, secret string, domain string) string {
 			},
 		},
 	}
+
+	//  Add toll plan variables to Directory
+	//   <variables>
+	//      <variable name="toll_allow" value="domestic"></variable>
+	//    </variables>
+	d.Section.Domain.Variables = append(d.Section.Domain.Variables, Variable{
+		Name:  "toll_allow",
+		Value: tollPlan,
+	})
+
 	d.Section.Domain.Params = append(d.Section.Domain.Params, Param{
 		Name:  "dial-string",
 		Value: "{presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(${dialed_user}@${dialed_domain})}",

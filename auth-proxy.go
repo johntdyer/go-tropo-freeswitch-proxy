@@ -33,6 +33,7 @@ func init() {
 		PapiUrl:         os.Getenv("TROPO_API_URL"),
 		BasicAuthUser:   os.Getenv("API_AUTH_USER"),
 		BasicAuthPass:   os.Getenv("API_AUTH_PASS"),
+		DefaultTollPlan: os.Getenv("DEFAULT_TOLL_PLAN"),
 		AuthProxyCache:  cache.New(2*time.Minute, 30*time.Second),
 		AppCacheTimeout: cacheTimeout,
 		Version:         Version,
@@ -54,6 +55,7 @@ func init() {
 		"listenPort":       GoAuthProxy.ListenPort,
 		"PapiUrl":          GoAuthProxy.PapiUrl,
 		"configPropertyId": GoAuthProxy.PropertyId,
+		"defaultTollPlan":  GoAuthProxy.DefaultTollPlan,
 		"PapiUser":         GoAuthProxy.PapiUser,
 		"PapiPass":         "xxxxxx",
 	}).Info("Starting " + GoAuthProxy.AppName)
@@ -112,7 +114,17 @@ func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httproute
 				authResponse.XmlResponse = RenderNotFound()
 			} else {
 				authResponse.Message = "User found"
-				authResponse.XmlResponse = RenderUserDirectory(freeswitch.SipAuthUsername, addressData.Value, freeswitch.Domain)
+
+				//If the tollplan config is set we'll use that otherwise we'll use the default
+				tollPlan := ""
+				if configData.Name["com.tropo.connect.tollAllow"] == "" {
+					tollPlan = GoAuthProxy.DefaultTollPlan
+				} else {
+					tollPlan = configData.Name["com.tropo.connect.tollAllow"]
+
+				}
+				authResponse.XmlResponse = RenderUserDirectory(freeswitch.SipAuthUsername, configData.Name["com.tropo.connect.address.secret"], freeswitch.Domain, tollPlan)
+
 			}
 
 		} else {

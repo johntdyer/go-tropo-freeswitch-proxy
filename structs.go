@@ -13,7 +13,6 @@ type GoAuthProxyConfig struct {
 	LogLevel        string
 	Version         string
 	BuildDate       string
-	AuthProxyCache  *cache.Cache
 	PapiUser        string
 	PapiPass        string
 	PapiUrl         string
@@ -21,8 +20,12 @@ type GoAuthProxyConfig struct {
 	BasicAuthPass   string
 	ListenPort      string
 	CacheTime       string
-	AppCacheTimeout int
 	ConnectDomain   string
+	DefaultTollPlan string
+	AuthProxyCache  *cache.Cache
+	AppCacheTimeout int
+}
+
 // Config data to be used by Proxy to look up address data by ID or key
 type ConfigData struct {
 	Id   map[int]string
@@ -81,6 +84,11 @@ type FreeswitchRequest struct {
 	SipAuthUsername string
 }
 
+type Variable struct {
+	Name  string `xml:"name,attr"`
+	Value string `xml:"value,attr"`
+}
+
 type Address struct {
 	XMLName xml.Name `xml:"domain"`
 	Name    string   `xml:"name,attr"`
@@ -103,9 +111,10 @@ type SectionResult struct {
 	Result Result `xml:"result"`
 }
 type Domain struct {
-	Name   string   `xml:"name,attr"`
-	Params []Param  `xml:"params>param"`
-	Groups []*Group `xml:"groups>group"`
+	Name      string     `xml:"name,attr"`
+	Params    []Param    `xml:"params>param"`
+	Variables []Variable `xml:"variables>variable"`
+	Groups    []*Group   `xml:"groups>group"`
 }
 
 type Group struct {
