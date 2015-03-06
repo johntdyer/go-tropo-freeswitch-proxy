@@ -126,9 +126,10 @@ type Group struct {
 }
 
 type User struct {
-	Id       string  `xml:"id,attr"`
-	Cachable string  `xml:"cacheable,attr"`
-	Params   []Param `xml:"params>param"`
+	Id        string     `xml:"id,attr"`
+	Cachable  string     `xml:"cacheable,attr"`
+	Params    []Param    `xml:"params>param"`
+	Variables []Variable `xml:"variables>variable"`
 }
 
 type Param struct {

@@ -1,3 +1,7 @@
+# 0.2.2
+
+* User profile variables should be decendent of User
+
 # 0.2.1
 
 * Rename cache config options

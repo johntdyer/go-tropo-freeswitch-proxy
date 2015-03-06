@@ -81,6 +81,19 @@ func RenderUserDirectory(address string, secret string, domain string, tollPlan 
 		Value: secret,
 	})
 
+	//  Add toll plan variables to Directory
+	//   <variables>
+	//      <variable name="toll_allow" value="domestic"></variable>
+	//    </variables>
+	user.Variables = append(user.Variables, Variable{
+		Name:  "toll_allow",
+		Value: tollPlan,
+	})
+	user.Variables = append(user.Variables, Variable{
+		Name:  "user_context",
+		Value: "test",
+	})
+
 	group := &Group{Name: "default"}
 
 	group.Users = append(group.Users, user)
@@ -93,15 +106,6 @@ func RenderUserDirectory(address string, secret string, domain string, tollPlan 
 			},
 		},
 	}
-
-	//  Add toll plan variables to Directory
-	//   <variables>
-	//      <variable name="toll_allow" value="domestic"></variable>
-	//    </variables>
-	d.Section.Domain.Variables = append(d.Section.Domain.Variables, Variable{
-		Name:  "toll_allow",
-		Value: tollPlan,
-	})
 
 	d.Section.Domain.Params = append(d.Section.Domain.Params, Param{
 		Name:  "dial-string",
