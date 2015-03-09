@@ -89,10 +89,6 @@ func RenderUserDirectory(address string, secret string, domain string, tollPlan 
 		Name:  "toll_allow",
 		Value: tollPlan,
 	})
-	user.Variables = append(user.Variables, Variable{
-		Name:  "user_context",
-		Value: "test",
-	})
 
 	group := &Group{Name: "default"}
 

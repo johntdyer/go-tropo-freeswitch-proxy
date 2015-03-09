@@ -1,3 +1,7 @@
+# 0.2.4
+
+* remove user_context debug var
+
 # 0.2.3
 
 * Support for enforcing domain when users register. Default to false
