@@ -9,7 +9,6 @@ import (
 // GoAuthProxyConfig is the primary application struct
 type GoAuthProxyConfig struct {
 	AppName                    string
-	PropertyId                 string
 	LogLevel                   string
 	Version                    string
 	BuildDate                  string
@@ -17,13 +16,14 @@ type GoAuthProxyConfig struct {
 	PapiPass                   string
 	PapiUrl                    string
 	BasicAuthUser              string
+	ConnectDomain              string
+	ValidateDomain             bool
 	BasicAuthPass              string
 	FreeSwitchUserCacheTimeout string
 	CacheNegativeTTL           int
 	CacheTTL                   int
 	ExpiredCachePurgeInterval  int
 	ListenPort                 string
-	ConnectDomain              string
 	DefaultTollPlan            string
 	AuthProxyCache             *cache.Cache
 	AppCacheTimeout            int

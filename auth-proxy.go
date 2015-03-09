@@ -22,35 +22,36 @@ var (
 
 // init function does amazing things
 func init() {
-	// cacheTimeout, _ := strconv.Atoi(os.Getenv("PAPI_CACHE"))
 
 	expiredCachePurgeInterval, _ := strconv.Atoi(os.Getenv("EXPIRED_CACHE_PURGE_INTERVAL"))
 	userCacheTTL, _ := strconv.Atoi(os.Getenv("APP_CACHE_TTL"))
 	appCacheNegativeTTL, _ := strconv.Atoi(os.Getenv("APP_CACHE_NEGATIVE_TTL"))
+
 	// Cache durations
 	CacheTTLDuration := time.Duration(rand.Int31n(int32(userCacheTTL)))
 	CachePurgeDuration := time.Duration(rand.Int31n(int32(expiredCachePurgeInterval)))
 
-	// convert seconds to millseconds for freeswitch
-	// t := time.Duration(rand.Int31n(int32(cacheTimeout)))
+	// Do we validate the domain defined in ENV['CONNECT_DOMAIN'] against the request.
+	validateDomain, _ := strconv.ParseBool(os.Getenv("CONNECT_VALIDATE_DOMAIN"))
+
 	GoAuthProxy = &GoAuthProxyConfig{
 		LogLevel:                   os.Getenv("LOG_LEVEL"),
 		ListenPort:                 os.Getenv("LISTEN_PORT"),
-		PropertyId:                 os.Getenv("ADDRESS_CONFIG_PROPERTY_ID"),
 		PapiUser:                   os.Getenv("TROPO_API_USER"),
 		PapiPass:                   os.Getenv("TROPO_API_PASS"),
 		PapiUrl:                    os.Getenv("TROPO_API_URL"),
+		ConnectDomain:              os.Getenv("CONNECT_DOMAIN"),
 		BasicAuthUser:              os.Getenv("API_AUTH_USER"),
 		BasicAuthPass:              os.Getenv("API_AUTH_PASS"),
 		FreeSwitchUserCacheTimeout: os.Getenv("FREESWITCH_CACHE_TIMEOUT"),
 		DefaultTollPlan:            os.Getenv("DEFAULT_TOLL_PLAN"),
+		ValidateDomain:             validateDomain,
 		CacheTTL:                   userCacheTTL,
 		CacheNegativeTTL:           appCacheNegativeTTL,
 		ExpiredCachePurgeInterval:  expiredCachePurgeInterval,
-
-		Version:   Version,
-		BuildDate: buildDate,
-		AppName:   "tropo-auth",
+		Version:                    Version,
+		BuildDate:                  buildDate,
+		AppName:                    "tropo-auth",
 	}
 
 	// Create a cache with a default expiration time of T minutes, and which  purges expired items every N seconds
@@ -72,11 +73,11 @@ func init() {
 		"freeSwitchUserCacheTimeout": GoAuthProxy.FreeSwitchUserCacheTimeout,
 		"listenPort":                 GoAuthProxy.ListenPort,
 		"PapiUrl":                    GoAuthProxy.PapiUrl,
-		"configPropertyId":           GoAuthProxy.PropertyId,
 		"defaultTollPlan":            GoAuthProxy.DefaultTollPlan,
-
-		"PapiUser": GoAuthProxy.PapiUser,
-		"PapiPass": "xxxxxx",
+		"connectDomain":              GoAuthProxy.ConnectDomain,
+		"validateDomain":             GoAuthProxy.ValidateDomain,
+		"PapiUser":                   GoAuthProxy.PapiUser,
+		"PapiPass":                   "xxxxxx",
 	}).Info("Starting " + GoAuthProxy.AppName)
 
 	log.SetLevel(level)
@@ -123,35 +124,40 @@ func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httproute
 	// Generally we only care about sip_auth action
 	if freeswitch.Action == "sip_auth" {
 
-		// Make sure the address starts w/ a plus
-		if strings.HasPrefix(freeswitch.SipAuthUsername, "+") {
+		// Validate domain and make sure its supported.  This is intended to help out w/ asshat's trying to register against FS
+		if GoAuthProxy.ValidateDomain == true && freeswitch.Domain != GoAuthProxy.ConnectDomain {
+			authResponse.Message = "Invalid domain [ " + freeswitch.Domain + " != " + GoAuthProxy.ConnectDomain + " ]"
+			authResponse.XmlResponse = RenderNotFound()
+		} else {
+			// Make sure the address starts w/ a plus
+			if strings.HasPrefix(freeswitch.SipAuthUsername, "+") {
 
-			configData := GetAddressConfigData(freeswitch.SipAuthUsername)
-			// If we get no auth data back then the number is not found
-			if configData.Name["com.tropo.connect.address.secret"] == "" {
-				authResponse.Message = "Address not found"
-				authResponse.XmlResponse = RenderNotFound()
-			} else {
-				authResponse.Message = "User found"
-
-				//If the tollplan config is set we'll use that otherwise we'll use the default
-				tollPlan := ""
-				if configData.Name["com.tropo.connect.tollAllow"] == "" {
-					tollPlan = GoAuthProxy.DefaultTollPlan
+				configData := GetAddressConfigData(freeswitch.SipAuthUsername)
+				// If we get no auth data back then the number is not found
+				if configData.Name["com.tropo.connect.address.secret"] == "" {
+					authResponse.Message = "Address not found"
+					authResponse.XmlResponse = RenderNotFound()
 				} else {
-					tollPlan = configData.Name["com.tropo.connect.tollAllow"]
+					authResponse.Message = "User found"
+
+					//If the tollplan config is set we'll use that otherwise we'll use the default
+					tollPlan := ""
+					if configData.Name["com.tropo.connect.tollAllow"] == "" {
+						tollPlan = GoAuthProxy.DefaultTollPlan
+					} else {
+						tollPlan = configData.Name["com.tropo.connect.tollAllow"]
+
+					}
+					authResponse.XmlResponse = RenderUserDirectory(freeswitch.SipAuthUsername, configData.Name["com.tropo.connect.address.secret"], freeswitch.Domain, tollPlan)
 
 				}
-				authResponse.XmlResponse = RenderUserDirectory(freeswitch.SipAuthUsername, configData.Name["com.tropo.connect.address.secret"], freeswitch.Domain, tollPlan)
 
+			} else {
+
+				authResponse.Message = "Not e164 encoded"
+				authResponse.XmlResponse = RenderNotFound()
 			}
-
-		} else {
-
-			authResponse.Message = "Not e164 encoded"
-			authResponse.XmlResponse = RenderNotFound()
 		}
-
 	} else {
 
 		authResponse.Message = "Unsupported action"

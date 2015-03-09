@@ -1,3 +1,7 @@
+# 0.2.3
+
+* Support for enforcing domain when users register. Default to false
+
 # 0.2.2
 
 * User profile variables should be decendent of User

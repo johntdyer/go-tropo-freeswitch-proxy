@@ -23,6 +23,7 @@ godep go run auth-proxy.go http_helpers.go check_api.go structs.go responses.go 
 
 #### Installation / Config
 
+
 To use this plugin you must made a few config changes to Freeswitch.
 
 * Install mod-curl
@@ -46,6 +47,26 @@ To use this plugin you must made a few config changes to Freeswitch.
   </bindings>
 </configuration>
 ```
+
+##### Application Config
+
+The application gets it config from a .env file.  The config items are as follows
+
+
+* `TROPO_API_USER`               - Username for user with read access to address config data
+* `TROPO_API_PASS`               - Password for user with read access to address config data
+* `TROPO_API_URL`                - Provisioning API URL
+* `API_AUTH_USER`                - Basic auth user for making requests against proxy
+* `API_AUTH_PASS`                - Basic auth pass for making requests against proxy
+* `LISTEN_PORT`                  - Listen port
+* `LOG_LEVEL`                    - Log level
+* `DEFAULT_TOLL_PLAN`            - Plan to use if there is none found in PAPI
+* `APP_CACHE_TTL`                - How long to cache application lookups from PAPI
+* `APP_CACHE_NEGATIVE_TTL`       - How long to cache negative lookups
+* `FREESWITCH_CACHE_TIMEOUT`     - How long freeswich should cache directoy lookups
+* `EXPIRED_CACHE_PURGE_INTERVAL` - How often expired items are purged from cache
+* `CONNECT_DOMAIN`               - Connect domain
+* `CONNECT_VALIDATE_DOMAIN`      - validate requests against `CONNECT_DOMAIN`
 
 ##### Upstart
 
