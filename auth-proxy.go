@@ -32,7 +32,12 @@ func init() {
 	CachePurgeDuration := time.Duration(rand.Int31n(int32(expiredCachePurgeInterval)))
 
 	// Do we validate the domain defined in ENV['CONNECT_DOMAIN'] against the request.
-	validateDomain, _ := strconv.ParseBool(os.Getenv("CONNECT_VALIDATE_DOMAIN"))
+	validateDomain, _ := strconv.ParseBool(os.Getenv("VALIDATE_CONNECT_DOMAIN"))
+	if validateDomain {
+		fmt.Println("true")
+	} else {
+		fmt.Println("false")
+	}
 
 	GoAuthProxy = &GoAuthProxyConfig{
 		LogLevel:                   os.Getenv("LOG_LEVEL"),
@@ -126,37 +131,45 @@ func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httproute
 
 		// Validate domain and make sure its supported.  This is intended to help out w/ asshat's trying to register against FS
 		if GoAuthProxy.ValidateDomain == true && freeswitch.Domain != GoAuthProxy.ConnectDomain {
-			authResponse.Message = "Invalid domain [ " + freeswitch.Domain + " != " + GoAuthProxy.ConnectDomain + " ]"
-			authResponse.XmlResponse = RenderNotFound()
-		} else {
-			// Make sure the address starts w/ a plus
-			if strings.HasPrefix(freeswitch.SipAuthUsername, "+") {
 
-				configData := GetAddressConfigData(freeswitch.SipAuthUsername)
-				// If we get no auth data back then the number is not found
-				if configData.Name["com.tropo.connect.address.secret"] == "" {
-					authResponse.Message = "Address not found"
-					authResponse.XmlResponse = RenderNotFound()
+			authResponse.Fields["valid_domain"] = GoAuthProxy.ConnectDomain
+			log.WithFields(authResponse.Fields).Warn("Domain does not match. Expected " + GoAuthProxy.ConnectDomain)
+
+			w.Header().Set("X-Tropo-Reason", "Domain does not match. Expected "+GoAuthProxy.ConnectDomain)
+			w.Header().Set("Content-Type", "text/xml")
+
+			fmt.Fprintf(w, RenderNotFound())
+			return
+		}
+
+		// Make sure the address starts w/ a plus
+		if strings.HasPrefix(freeswitch.SipAuthUsername, "+") {
+
+			configData := GetAddressConfigData(freeswitch.SipAuthUsername)
+			// If we get no auth data back then the number is not found
+			if configData.Name["com.tropo.connect.address.secret"] == "" {
+				authResponse.Message = "Address not found"
+				authResponse.XmlResponse = RenderNotFound()
+			} else {
+				authResponse.Message = "User found"
+
+				//If the tollplan config is set we'll use that otherwise we'll use the default
+				tollPlan := ""
+				if configData.Name["com.tropo.connect.tollAllow"] == "" {
+					tollPlan = GoAuthProxy.DefaultTollPlan
 				} else {
-					authResponse.Message = "User found"
-
-					//If the tollplan config is set we'll use that otherwise we'll use the default
-					tollPlan := ""
-					if configData.Name["com.tropo.connect.tollAllow"] == "" {
-						tollPlan = GoAuthProxy.DefaultTollPlan
-					} else {
-						tollPlan = configData.Name["com.tropo.connect.tollAllow"]
-
-					}
-					authResponse.XmlResponse = RenderUserDirectory(freeswitch.SipAuthUsername, configData.Name["com.tropo.connect.address.secret"], freeswitch.Domain, tollPlan)
+					tollPlan = configData.Name["com.tropo.connect.tollAllow"]
 
 				}
+				authResponse.XmlResponse = RenderUserDirectory(freeswitch.SipAuthUsername, configData.Name["com.tropo.connect.address.secret"], freeswitch.Domain, tollPlan)
 
-			} else {
-
-				authResponse.Message = "Not e164 encoded"
-				authResponse.XmlResponse = RenderNotFound()
 			}
+
+		} else {
+
+			authResponse.Message = "Not e164 encoded"
+			authResponse.XmlResponse = RenderNotFound()
+
 		}
 	} else {
 

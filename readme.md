@@ -66,7 +66,7 @@ The application gets it config from a .env file.  The config items are as follow
 * `FREESWITCH_CACHE_TIMEOUT`     - How long freeswich should cache directoy lookups
 * `EXPIRED_CACHE_PURGE_INTERVAL` - How often expired items are purged from cache
 * `CONNECT_DOMAIN`               - Connect domain
-* `CONNECT_VALIDATE_DOMAIN`      - validate requests against `CONNECT_DOMAIN`
+* `VALIDATE_CONNECT_DOMAIN`      - validate requests against `CONNECT_DOMAIN`
 
 ##### Upstart
 
