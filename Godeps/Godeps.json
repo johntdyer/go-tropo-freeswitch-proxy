@@ -11,6 +11,10 @@
 			"Rev": "58f778a886b1e483dccc3b61085ccf347bf1a37e"
 		},
 		{
+			"ImportPath": "github.com/fukata/golang-stats-api-handler",
+			"Rev": "1610ed23a3c23f91642064f0ead60dc4b4f44847"
+		},
+		{
 			"ImportPath": "github.com/joho/godotenv",
 			"Comment": "v1-2-gead2e75",
 			"Rev": "ead2e75027bf1a3f6457e28d9eb3c2fa05109d2b"

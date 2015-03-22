@@ -2,6 +2,7 @@ package main
 
 import (
 	log "bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/Sirupsen/logrus"
+	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/fukata/golang-stats-api-handler"
 	_ "bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/joho/godotenv/autoload"
 	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/julienschmidt/httprouter"
 	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/pmylund/go-cache"
@@ -259,12 +260,17 @@ func CacheHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params
 	fmt.Fprintf(w, msg)
 }
 
+// Allos httprouter to call  stats_api.Handler
+func StatsHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	stats_api.Handler(w, req)
+}
+
 func main() {
 	user := []byte(GoAuthProxy.BasicAuthUser)
 	pass := []byte(GoAuthProxy.BasicAuthPass)
 
 	router := httprouter.New()
-
+	router.GET("/stats", StatsHandler)
 	router.GET("/connect-auth", BasicAuth(DirectoryAuthHandler, user, pass))
 	router.POST("/connect-auth", BasicAuth(DirectoryAuthHandler, user, pass))
 	router.GET("/", VersionHandler)
