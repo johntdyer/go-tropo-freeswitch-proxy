@@ -1,3 +1,7 @@
+# 0.3.0
+
+* Add stats api for checking process health restfully
+
 # 0.2.4
 
 * remove user_context debug var
