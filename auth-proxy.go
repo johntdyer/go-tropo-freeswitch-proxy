@@ -6,12 +6,14 @@ import (
 	_ "bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/joho/godotenv/autoload"
 	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/julienschmidt/httprouter"
 	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/pmylund/go-cache"
+	"bitbucket.org/voxeolabs/go-freeswitch-auth-proxy/Godeps/_workspace/src/github.com/thoas/stats"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
+
 	"strings"
 	"time"
 )
@@ -269,8 +271,12 @@ func main() {
 	user := []byte(GoAuthProxy.BasicAuthUser)
 	pass := []byte(GoAuthProxy.BasicAuthPass)
 
+	//http stats
+	stats := stats.New()
+
 	router := httprouter.New()
-	router.GET("/stats", StatsHandler)
+
+	router.GET("/stats/go", StatsHandler)
 	router.GET("/connect-auth", BasicAuth(DirectoryAuthHandler, user, pass))
 	router.POST("/connect-auth", BasicAuth(DirectoryAuthHandler, user, pass))
 	router.GET("/", VersionHandler)
@@ -280,6 +286,15 @@ func main() {
 	router.GET("/cache", CacheHandler)
 	router.GET("/users/:address", UserAuthHandler)
 
-	http.ListenAndServe(":"+GoAuthProxy.ListenPort, router)
+	router.GET("/stats/http", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		s, err := json.Marshal(stats.Data())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		w.Write(s)
+	})
+
+	http.ListenAndServe(":"+GoAuthProxy.ListenPort, stats.Handler(router))
 
 }

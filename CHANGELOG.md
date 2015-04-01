@@ -1,3 +1,7 @@
+# 0.4.0
+
+* Update to include http stats using [stats](https://github.com/thoas/stats)
+
 # 0.3.0
 
 * Add stats api for checking process health restfully

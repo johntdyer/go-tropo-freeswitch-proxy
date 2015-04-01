@@ -35,6 +35,10 @@
 			"ImportPath": "github.com/smartystreets/goconvey/convey",
 			"Comment": "1.5.0-356-gfbc0a1c",
 			"Rev": "fbc0a1c888f9f96263f9a559d1769905245f1123"
+		},
+		{
+			"ImportPath": "github.com/thoas/stats",
+			"Rev": "7e9850357746b212a2b3a496469609b84d7b2805"
 		}
 	]
 }

@@ -21,6 +21,7 @@ go get github.com/tools/godep
 godep go run auth-proxy.go http_helpers.go check_api.go structs.go responses.go version.go papi.go
 ```
 
+
 #### Installation / Config
 
 
@@ -212,3 +213,71 @@ $ curl -v -u user:pass "http://127.0.0.1:9082/connect-auth?hostname=fs1&section=
 </document>%
 $
 ```
+
+
+#### Stats API
+
+##### Go Stats
+
+This API will return go virtual machine stats  [http://localhost:9082/stats/go](http://localhost:9082/stats/go)
+
+```json
+{
+  "time": 1427915057163330600,
+  "go_version": "go1.4",
+  "go_os": "darwin",
+  "go_arch": "amd64",
+  "cpu_num": 8,
+  "goroutine_num": 9,
+  "gomaxprocs": 1,
+  "cgo_call_num": 0,
+  "memory_alloc": 163456,
+  "memory_total_alloc": 224224,
+  "memory_sys": 2885880,
+  "memory_lookups": 9,
+  "memory_mallocs": 1236,
+  "memory_frees": 321,
+  "memory_stack": 212992,
+  "heap_alloc": 163456,
+  "heap_sys": 835584,
+  "heap_idle": 393216,
+  "heap_inuse": 442368,
+  "heap_released": 0,
+  "heap_objects": 915,
+  "gc_next": 215856,
+  "gc_last": 1427915055894457600,
+  "gc_num": 4,
+  "gc_per_second": 0,
+  "gc_pause_per_second": 0,
+  "gc_pause": [
+    0.131137,
+    0.083353,
+    0.075486,
+    0.088565
+  ]
+}
+
+```
+##### HTTP Stats
+
+This API will return http stats  [http://localhost:9082/stats/http](http://localhost:9082/stats/http)
+
+```json
+{
+    "pid": 36719,
+    "uptime": "5.041052691s",
+    "uptime_sec": 5.041052691,
+    "time": "2015-04-01 14:59:40.169469799 -0400 EDT",
+    "unixtime": 1427914780,
+    "status_code_count": {},
+    "total_status_code_count": {
+        "200": 1
+    },
+    "count": 0,
+    "total_count": 1,
+    "TotalResponseTime": "210.859µs",
+    "total_response_time_sec": 0.000210859,
+    "average_response_time": "210.859µs",
+    "average_response_time_sec": 0.000210859
+}
+````
