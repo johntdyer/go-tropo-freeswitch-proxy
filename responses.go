@@ -66,7 +66,7 @@ func RenderNotFound() string {
 </document>
 */
 
-func RenderUserDirectory(address string, secret string, domain string, tollPlan string) string {
+func RenderUserDirectory(address string, secret string, domain string, tollPlan string, allowDirectSipOut string) string {
 
 	user := &User{}
 	user.Id = address
@@ -88,6 +88,15 @@ func RenderUserDirectory(address string, secret string, domain string, tollPlan 
 	user.Variables = append(user.Variables, Variable{
 		Name:  "toll_allow",
 		Value: tollPlan,
+	})
+
+	//  Based on configuration in PAPI we guard wheather or not you can place direct outbound calls
+	//   <variables>
+	//      <variable name="allow_direct_sip_out" value="true"></variable>
+	//    </variables>
+	user.Variables = append(user.Variables, Variable{
+		Name:  "allow_direct_sip_out",
+		Value: allowDirectSipOut,
 	})
 
 	group := &Group{Name: "default"}

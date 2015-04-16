@@ -162,9 +162,16 @@ func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httproute
 					tollPlan = GoAuthProxy.DefaultTollPlan
 				} else {
 					tollPlan = configData.Name["com.tropo.connect.tollAllow"]
-
 				}
-				authResponse.XmlResponse = RenderUserDirectory(freeswitch.SipAuthUsername, configData.Name["com.tropo.connect.address.secret"], freeswitch.Domain, tollPlan)
+
+				allow_direct_sip_out := configData.Name["com.tropo.connect.sip_outbound_allow"]
+
+				authResponse.XmlResponse = RenderUserDirectory(freeswitch.SipAuthUsername,
+					configData.Name["com.tropo.connect.address.secret"],
+					freeswitch.Domain,
+					tollPlan,
+					allow_direct_sip_out,
+				)
 
 			}
 

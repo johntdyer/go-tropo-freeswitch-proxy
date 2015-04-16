@@ -1,3 +1,7 @@
+# 0.5.0
+
+* Support setting `allow_direct_sip_out` from PAPI resouce configration. Used to allow a user to place direct sip calls from FS without going through tropo-gateway - OPS-3615
+
 # 0.4.0
 
 * Update to include http stats using [stats](https://github.com/thoas/stats)
