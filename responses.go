@@ -5,16 +5,15 @@ import (
 	"strconv"
 )
 
-// Render empty XML
+// RenderEmpty empty XML
 // <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 // <document type="freeswitch/xml"/>
-
 func RenderEmpty() string {
 	return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<document type=\"freeswitch/xml\"/>"
 
 }
 
-// Render user not found XML
+// RenderNotFound - render user not found XML
 // <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 // <document type="freeswitch/xml">
 //     <section name="result">
@@ -39,6 +38,7 @@ func RenderNotFound() string {
 	return xml.Header + string(x)
 }
 
+// RenderUserDirectory - Returns XML for user dir
 /*
 <?xml version="1.0" encoding="UTF-8"?>
 <document type="freeswitch/xml">
@@ -65,11 +65,10 @@ func RenderNotFound() string {
   </section>
 </document>
 */
-
 func RenderUserDirectory(address string, secret string, domain string, tollPlan string, allowDirectSipOut string) string {
 
 	user := &User{}
-	user.Id = address
+	user.ID = address
 
 	//convert config value to milliseconds
 	ms, _ := strconv.Atoi(GoAuthProxy.FreeSwitchUserCacheTimeout)

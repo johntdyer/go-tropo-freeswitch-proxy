@@ -7,36 +7,42 @@ import (
 	"time"
 )
 
+// Status of health check
 type Status int
 
 const (
+	// UNCHECKED -  if unchecked
 	UNCHECKED Status = iota
+	// DOWN - is down
 	DOWN
+	// UP - is up
 	UP
 )
 
+// Site url
 type Site struct {
 	url string
 }
 
+// Status - Check status of end point
 func (s Site) Status() (Status, error) {
 
 	conn, err := net.DialTimeout("tcp", s.url, time.Duration(2*time.Second))
 
-	api_status := UP
+	apiStatus := UP
 
 	if err, ok := err.(net.Error); ok && err.Timeout() {
 
-		api_status = DOWN
+		apiStatus = DOWN
 	} else if err != nil {
-		api_status = DOWN
+		apiStatus = DOWN
 	} else {
 
 		fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
 		_, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
-			api_status = DOWN
+			apiStatus = DOWN
 		}
 	}
-	return api_status, err
+	return apiStatus, err
 }

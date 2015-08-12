@@ -19,7 +19,8 @@ import (
 )
 
 var (
-	buildDate   string
+	buildDate string
+	//GoAuthProxy - Primary config
 	GoAuthProxy *GoAuthProxyConfig
 )
 
@@ -47,7 +48,7 @@ func init() {
 		ListenPort:                 os.Getenv("LISTEN_PORT"),
 		PapiUser:                   os.Getenv("TROPO_API_USER"),
 		PapiPass:                   os.Getenv("TROPO_API_PASS"),
-		PapiUrl:                    os.Getenv("TROPO_API_URL"),
+		PapiURL:                    os.Getenv("TROPO_API_URL"),
 		ConnectDomain:              os.Getenv("CONNECT_DOMAIN"),
 		BasicAuthUser:              os.Getenv("API_AUTH_USER"),
 		BasicAuthPass:              os.Getenv("API_AUTH_PASS"),
@@ -80,7 +81,7 @@ func init() {
 		"ExpiredCachePurgeInterval":  GoAuthProxy.ExpiredCachePurgeInterval,
 		"freeSwitchUserCacheTimeout": GoAuthProxy.FreeSwitchUserCacheTimeout,
 		"listenPort":                 GoAuthProxy.ListenPort,
-		"PapiUrl":                    GoAuthProxy.PapiUrl,
+		"PapiURL":                    GoAuthProxy.PapiURL,
 		"defaultTollPlan":            GoAuthProxy.DefaultTollPlan,
 		"connectDomain":              GoAuthProxy.ConnectDomain,
 		"validateDomain":             GoAuthProxy.ValidateDomain,
@@ -91,7 +92,7 @@ func init() {
 	log.SetLevel(level)
 }
 
-// versionRequestHandler handles incoming version / health requests
+// VersionHandler handles incoming version / health requests
 func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	ad := AppData{
 		Name:      GoAuthProxy.AppName,
@@ -106,20 +107,21 @@ func VersionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Para
 		"build_date": ad.BuildDate,
 	}).Debug("VersionHandler")
 
-	ad.ApiConnectivty = getProvisioningStatus(GoAuthProxy.PapiUrl)
+	ad.APIConnectivty = getProvisioningStatus(GoAuthProxy.PapiURL)
 	body, _ := json.Marshal(ad)
 
 	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprintf(w, string(body))
 }
 
+// DirectoryAuthHandler - HTTP handler for directory requests
 func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	authResponse := &DirectoryAuthResponse{}
 
 	freeswitch := parseFreeswitchRequest(req)
 
 	authResponse.Fields = log.Fields{
-		"remote_ip":         freeswitch.Ip,
+		"remote_ip":         freeswitch.IP,
 		"sip_user_agent":    freeswitch.UserAgent,
 		"domain":            freeswitch.Domain,
 		"url":               req.RequestURI,
@@ -152,7 +154,7 @@ func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httproute
 			// If we get no auth data back then the number is not found
 			if configData.Name["com.tropo.connect.address.secret"] == "" {
 				authResponse.Message = "Address not found"
-				authResponse.XmlResponse = RenderNotFound()
+				authResponse.XMLResponse = RenderNotFound()
 			} else {
 				authResponse.Message = "User found"
 
@@ -164,13 +166,13 @@ func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httproute
 					tollPlan = configData.Name["com.tropo.connect.tollAllow"]
 				}
 
-				allow_direct_sip_out := configData.Name["com.tropo.connect.sip_outbound_allow"]
+				allowDirectSipOut := configData.Name["com.tropo.connect.sip_outbound_allow"]
 
-				authResponse.XmlResponse = RenderUserDirectory(freeswitch.SipAuthUsername,
+				authResponse.XMLResponse = RenderUserDirectory(freeswitch.SipAuthUsername,
 					configData.Name["com.tropo.connect.address.secret"],
 					freeswitch.Domain,
 					tollPlan,
-					allow_direct_sip_out,
+					allowDirectSipOut,
 				)
 
 			}
@@ -178,22 +180,23 @@ func DirectoryAuthHandler(w http.ResponseWriter, req *http.Request, ps httproute
 		} else {
 
 			authResponse.Message = "Not e164 encoded"
-			authResponse.XmlResponse = RenderNotFound()
+			authResponse.XMLResponse = RenderNotFound()
 
 		}
 	} else {
 
 		authResponse.Message = "Unsupported action"
-		authResponse.XmlResponse = RenderEmpty()
+		authResponse.XMLResponse = RenderEmpty()
 
 	}
 
 	log.WithFields(authResponse.Fields).Info(authResponse.Message)
 	w.Header().Set("X-Tropo-Reason", authResponse.Message)
 	w.Header().Set("Content-Type", "text/xml")
-	fmt.Fprintf(w, authResponse.XmlResponse)
+	fmt.Fprintf(w, authResponse.XMLResponse)
 }
 
+// UserAuthHandler - HTTP handler for authenticating users
 func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	res := &UserAuthHandlerResponse{}
 	res.Address = ps.ByName("address")
@@ -249,6 +252,8 @@ func UserAuthHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Par
 	w.WriteHeader(res.Header)
 
 }
+
+// CacheHandler - Middleware for caching
 func CacheHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 
 	log.WithFields(log.Fields{
@@ -269,7 +274,7 @@ func CacheHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params
 	fmt.Fprintf(w, msg)
 }
 
-// Allos httprouter to call  stats_api.Handler
+// StatsHandler - Allow httprouter to call  stats_api.Handler
 func StatsHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	stats_api.Handler(w, req)
 }

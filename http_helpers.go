@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// We need an object that implements the http.Handler interface.
+//HostSwitch -  We need an object that implements the http.Handler interface.
 // Therefore we need a type for which we implement the ServeHTTP method.
 // We just use a map here, in which we map host names (with port) to http.Handlers
 type HostSwitch map[string]http.Handler
@@ -35,7 +35,7 @@ func parseFreeswitchRequest(req *http.Request) (a *FreeswitchRequest) {
 
 	if req.Method == "POST" {
 		a.Action = req.FormValue("action")
-		a.Ip = req.FormValue("ip")
+		a.IP = req.FormValue("ip")
 		a.UserAgent = req.FormValue("sip_user_agent")
 		a.Username = req.FormValue("user")
 		a.Domain = req.FormValue("domain")
@@ -43,7 +43,7 @@ func parseFreeswitchRequest(req *http.Request) (a *FreeswitchRequest) {
 	} else {
 		q := req.URL.Query()
 		a.Action = q.Get("action")
-		a.Ip = q.Get("ip")
+		a.IP = q.Get("ip")
 		a.UserAgent = q.Get("sip_user_agent")
 		a.Domain = q.Get("domain")
 		a.Username = q.Get("user")
@@ -53,9 +53,9 @@ func parseFreeswitchRequest(req *http.Request) (a *FreeswitchRequest) {
 }
 
 // getProvisioningStatus checks connectivity with PAPI
-func getProvisioningStatus(papiUrl string) bool {
+func getProvisioningStatus(papiURL string) bool {
 	result := false
-	u, err := url.Parse(papiUrl)
+	u, err := url.Parse(papiURL)
 	if err != nil {
 		log.Error(err)
 	}
@@ -83,6 +83,7 @@ func getProvisioningStatus(papiUrl string) bool {
 	return result
 }
 
+// BasicAuth - Middleware for basic auth
 func BasicAuth(h httprouter.Handle, user, pass []byte) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		const basicAuthPrefix string = "Basic "
