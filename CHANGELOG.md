@@ -1,3 +1,8 @@
+# 0.5.1
+
+* Address golint issues - OPS-3931
+* Insure HTTP requests are cleaned up - OPS-3932
+
 # 0.5.0
 
 * Support setting `allow_direct_sip_out` from PAPI resouce configration. Used to allow a user to place direct sip calls from FS without going through tropo-gateway - OPS-3615
