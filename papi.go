@@ -15,8 +15,12 @@ func fetchProvisioningAddressConfig(address string) (*PapiResponse, error) {
 	respJSON := &PapiResponse{}
 
 	req, err := http.NewRequest("GET", GoAuthProxy.PapiURL+"/addresses/number/"+address+"/config", nil)
+	req.Close = true
 	req.SetBasicAuth(GoAuthProxy.PapiUser, GoAuthProxy.PapiPass)
 	resp, err := client.Do(req)
+
+	// defer close
+	defer resp.Body.Close()
 
 	if err != nil {
 		log.Error("PAPI Error : %s", err)
